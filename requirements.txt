@@ -1,0 +1,9 @@
+Flask==3.0.3
+Flask-Babel==4.0.0
+Markdown==3.6
+bleach==6.1.0
+Pygments==2.18.0
+docutils==0.21.2
+PyYAML==6.0.2
+emoji==2.15.0
+playwright==1.60.0

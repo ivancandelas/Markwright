@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if doc_title %}{{ doc_title }}{% else %}Markwright{% endif %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset_url('favicon.svg') }}">
+    <link rel="stylesheet" href="{{ asset_url('css/style.css') }}">
+  </head>
+  <body>
+    <div class="app-shell" id="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <a class="brand" href="{{ url_for('index') }}">Markwright</a>
+          <div class="sidebar-header-actions">
+            <div class="settings-wrap">
+              <button class="icon-button" id="settings-toggle" type="button" title="{{ _('Appearance settings') }}" aria-label="{{ _('Appearance settings') }}" aria-expanded="false" aria-controls="settings-popover">⚙</button>
+            </div>
+            <button class="icon-button sidebar-collapse" id="sidebar-collapse" type="button" title="{{ _('Hide sidebar') }}" aria-label="{{ _('Hide sidebar') }}" aria-controls="sidebar" aria-expanded="true">«</button>
+          </div>
+          <div class="settings-popover" id="settings-popover" hidden>
+            <p class="settings-title">{{ _('Appearance') }}</p>
+            <label class="settings-field">{{ _('Language') }}
+              <select class="lang-select" id="lang-select" aria-label="{{ _('Language') }}">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <label class="settings-field">{{ _('Theme') }}
+              <select class="theme-select" id="theme-select" aria-label="{{ _('Theme') }}">
+                <option value="light">{{ _('Light') }}</option>
+                <option value="dark">{{ _('Dark') }}</option>
+                <option value="sepia">{{ _('Sepia') }}</option>
+                <option value="nord">Nord</option>
+                <option value="solarized-light">Solarized Light</option>
+                <option value="solarized-dark">Solarized Dark</option>
+                <option value="retro-sun">Retro Sun</option>
+                <option value="monokai">Monokai</option>
+                <option value="gruvbox-dark-hard">Gruvbox Dark Hard</option>
+                <option value="github-light-default">GitHub Light Default</option>
+                <option value="quiet-light">Quiet Light</option>
+                <option value="dracula">Dracula</option>
+                <option value="one-dark">One Dark</option>
+                <option value="one-light">One Light</option>
+                <option value="tokyo-night">Tokyo Night</option>
+                <option value="catppuccin-mocha">Catppuccin Mocha</option>
+                <option value="catppuccin-latte">Catppuccin Latte</option>
+                <option value="night-owl">Night Owl</option>
+                <option value="material-palenight">Material Palenight</option>
+                <option value="ayu-light">Ayu Light</option>
+                <option value="cobalt2">Cobalt2</option>
+              </select>
+            </label>
+            <label class="settings-field">{{ _('Font') }}
+              <select class="font-select" id="font-select" aria-label="{{ _('Font') }}"></select>
+            </label>
+            <label class="settings-field">{{ _('Diagram theme') }}
+              <select class="mermaid-theme-select" id="mermaid-theme-select" aria-label="{{ _('Diagram theme') }}">
+                <optgroup label="{{ _('Match page') }}">
+                  <option value="auto">{{ _('Auto (match page)') }}</option>
+                </optgroup>
+                <optgroup label="{{ _('Page palettes') }}">
+                  <option value="palette:light">{{ _('Light') }}</option>
+                  <option value="palette:dark">{{ _('Dark') }}</option>
+                  <option value="palette:sepia">{{ _('Sepia') }}</option>
+                  <option value="palette:nord">Nord</option>
+                  <option value="palette:solarized-light">Solarized Light</option>
+                  <option value="palette:solarized-dark">Solarized Dark</option>
+                  <option value="palette:retro-sun">Retro Sun</option>
+                  <option value="palette:monokai">Monokai</option>
+                  <option value="palette:gruvbox-dark-hard">Gruvbox Dark Hard</option>
+                  <option value="palette:github-light-default">GitHub Light</option>
+                  <option value="palette:quiet-light">Quiet Light</option>
+                  <option value="palette:dracula">Dracula</option>
+                  <option value="palette:one-dark">One Dark</option>
+                  <option value="palette:one-light">One Light</option>
+                  <option value="palette:tokyo-night">Tokyo Night</option>
+                  <option value="palette:catppuccin-mocha">Catppuccin Mocha</option>
+                  <option value="palette:catppuccin-latte">Catppuccin Latte</option>
+                  <option value="palette:night-owl">Night Owl</option>
+                  <option value="palette:material-palenight">Material Palenight</option>
+                  <option value="palette:ayu-light">Ayu Light</option>
+                  <option value="palette:cobalt2">Cobalt2</option>
+                </optgroup>
+                <optgroup label="{{ _('Mermaid built-in') }}">
+                  <option value="default">{{ _('Default') }}</option>
+                  <option value="neutral">{{ _('Neutral') }}</option>
+                  <option value="dark">{{ _('Dark') }}</option>
+                  <option value="forest">{{ _('Forest') }}</option>
+                  <option value="base">{{ _('Base') }}</option>
+                </optgroup>
+              </select>
+            </label>
+            <label class="settings-field">{{ _('Content width') }}
+              <select class="width-select" id="width-select" aria-label="{{ _('Content width') }}">
+                <option value="narrow">{{ _('Narrow') }}</option>
+                <option value="default" selected>{{ _('Default') }}</option>
+                <option value="wide">{{ _('Wide') }}</option>
+                <option value="full">{{ _('Full') }}</option>
+              </select>
+            </label>
+            <div class="settings-field">
+              <span>{{ _('Font size') }}</span>
+              <div class="font-size-controls" role="group" aria-label="{{ _('Content font size') }}">
+                <button id="font-size-down" type="button" title="{{ _('Decrease font size') }}" aria-label="{{ _('Decrease font size') }}">A−</button>
+                <button id="font-size-reset" type="button" title="{{ _('Reset font size') }}" aria-label="{{ _('Reset font size') }}"><span id="font-size-value">16</span></button>
+                <button id="font-size-up" type="button" title="{{ _('Increase font size') }}" aria-label="{{ _('Increase font size') }}">A+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <details class="source-picker" id="source-picker">
+          <summary>
+            <span class="source-picker-label">{{ _('Source') }}</span>
+            <span class="source-picker-current" title="{{ content_dir }}">{{ content_dir|basename or content_dir }}</span>
+          </summary>
+          <div class="source-picker-body">
+            <input id="source-input" class="search-input" type="text" placeholder="{{ _('/path/to/folder or https://github.com/user/repo') }}" autocomplete="off" spellcheck="false">
+            <div class="source-picker-actions">
+              <button id="source-open" class="source-button" type="button">{{ _('Open') }}</button>
+              <span class="source-status" id="source-status" role="status" aria-live="polite"></span>
+            </div>
+            {% if recents %}
+              <p class="source-recents-label">{{ _('Recent') }}</p>
+              <ul class="source-recents">
+                {% for r in recents %}
+                  <li class="source-recent-row">
+                    <button class="source-recent" type="button" data-path="{{ r.path }}" title="{{ r.path }}">
+                      <span class="source-recent-name">{{ r.label }}</span>
+                      <span class="source-recent-kind">{{ r.kind }}</span>
+                    </button>
+                    <button class="source-recent-remove" type="button" data-path="{{ r.path }}" data-label="{{ r.label }}" data-kind="{{ r.kind }}" title="{{ _('Remove from recents') }}{% if r.kind == 'git' %} {{ _('(deletes cached clone)') }}{% endif %}" aria-label="{{ _('Remove %(label)s from recents', label=r.label) }}">×</button>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </details>
+
+        <label class="search-label" for="file-search">{{ _('Search markdown files') }}</label>
+        <input id="file-search" class="search-input" type="search" placeholder="{{ _('Filter files...') }}" autocomplete="off">
+
+        <div class="tree-controls">
+          <select class="tree-sort-select" id="tree-sort" title="{{ _('Sort folders and files') }}" aria-label="{{ _('Sort order') }}">
+            <option value="name-asc">{{ _('Name (A→Z)') }}</option>
+            <option value="name-desc">{{ _('Name (Z→A)') }}</option>
+            <option value="date-desc">{{ _('Newest first') }}</option>
+            <option value="date-asc">{{ _('Oldest first') }}</option>
+          </select>
+          <button class="tree-collapse-all" id="tree-collapse-all" type="button" aria-pressed="false" title="{{ _('Collapse all folders') }}" aria-label="{{ _('Collapse all folders') }}">
+            <span class="chevron">▾</span>
+            <span class="tree-collapse-all-label">{{ _('Collapse all') }}</span>
+          </button>
+        </div>
+
+        <nav class="bookmark-tree" id="bookmark-tree" aria-label="{{ _('Bookmarked files') }}" hidden>
+          <p class="bookmark-tree-label">{{ _('Bookmarked') }}</p>
+          <ul class="bookmark-tree-list" id="bookmark-tree-list"></ul>
+        </nav>
+
+        <nav class="file-tree" aria-label="{{ _('Markdown files') }}">
+          {% macro render_tree(node, prefix="") %}
+            <ul>
+              {% for name, value in node.items() %}
+                {% if value is mapping %}
+                  {% set dir_path = prefix ~ name %}
+                  <li class="tree-directory" data-dir-path="{{ dir_path }}" data-name="{{ name|lower }}" data-mtime="{{ tree_meta.get(dir_path, 0) }}">
+                    <button class="tree-toggle" type="button" aria-expanded="true">
+                      <span class="chevron">▾</span>
+                      <span>{{ name }}</span>
+                    </button>
+                    <div class="tree-children">
+                      {{ render_tree(value, prefix ~ name ~ "/") }}
+                    </div>
+                  </li>
+                {% else %}
+                  <li class="tree-file" data-file-path="{{ value|lower }}" data-name="{{ name|lower }}" data-mtime="{{ tree_meta.get(value, 0) }}">
+                    <a class="file-link {% if value == selected %}is-active{% endif %}" href="{{ url_for('index', file=value) }}" title="{{ value }}">
+                      <span class="file-name">{{ name }}</span>
+                    </a>
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          {% endmacro %}
+
+          {% if files %}
+            {{ render_tree(tree) }}
+          {% else %}
+            <p class="empty-state">{{ _('No markdown files found.') }}</p>
+          {% endif %}
+        </nav>
+      </aside>
+
+      <button class="sidebar-show" id="sidebar-show" type="button" title="{{ _('Show sidebar') }}" aria-label="{{ _('Show sidebar') }}" aria-controls="sidebar" aria-expanded="true">☰</button>
+
+      <main class="content-panel" id="content-panel">
+        <div class="content-with-toc {% if toc %}has-toc{% endif %}">
+          <div class="content-column">
+            <header class="document-header">
+              <div class="document-heading">
+                <p class="eyebrow">{{ _('Current file') }}</p>
+                <h2>{{ selected if selected else _('No markdown file selected') }}</h2>
+                <p class="content-root">{{ _('Root: %(dir)s', dir=content_dir) }}</p>
+              </div>
+              {% if editable %}
+                <div class="file-menu-wrap">
+                  <button class="icon-button file-menu-toggle" id="file-menu-toggle" type="button" title="{{ _('File actions') }}" aria-label="{{ _('File actions') }}" aria-expanded="false" aria-controls="file-menu-popover">⋮</button>
+                  <div class="file-menu-popover" id="file-menu-popover" hidden>
+                    <div class="file-menu-list" id="file-menu-list">
+                      <button class="file-menu-item" id="fm-new" type="button">{{ _('New file…') }}</button>
+                      {% if selected %}
+                        <button class="file-menu-item" id="fm-rename" type="button" data-file="{{ selected }}">{{ _('Rename…') }}</button>
+                        <button class="file-menu-item danger" id="fm-delete" type="button" data-file="{{ selected }}" data-name="{{ selected|basename }}">{{ _('Delete…') }}</button>
+                      {% endif %}
+                    </div>
+                    <form class="file-menu-form" id="file-menu-form" hidden>
+                      <p class="file-menu-form-title" id="fm-form-title"></p>
+                      <input class="search-input file-menu-input" id="fm-form-input" type="text" autocomplete="off" spellcheck="false">
+                      <div class="file-menu-form-actions">
+                        <button class="source-button" id="fm-form-submit" type="submit"></button>
+                        <button class="source-button secondary" id="fm-form-cancel" type="button">{{ _('Cancel') }}</button>
+                      </div>
+                      <span class="file-menu-status" id="fm-form-status" role="status" aria-live="polite"></span>
+                    </form>
+                  </div>
+                </div>
+              {% endif %}
+              {% if selected %}
+                {% if editable %}
+                  <button class="icon-button edit-toggle" id="edit-toggle" type="button" title="{{ _('Edit') }}" aria-label="{{ _('Edit source') }}" aria-pressed="false" data-file="{{ selected }}">✎</button>
+                {% endif %}
+                <button class="icon-button source-view-toggle" id="source-view-toggle" type="button" title="{{ _('View source') }}" aria-label="{{ _('Toggle source view') }}" aria-pressed="false" data-file="{{ selected }}">&lt;/&gt;</button>
+                <button class="icon-button focus-read-toggle" id="focus-read-toggle" type="button" title="{{ _('Focus reading (F)') }}" aria-label="{{ _('Focus reading') }}" aria-pressed="false">⤢</button>
+                <button class="icon-button frontmatter-toggle" id="frontmatter-toggle" type="button" title="{{ _('Show/hide frontmatter panel') }}" aria-label="{{ _('Toggle frontmatter panel') }}" aria-pressed="true" disabled>ⓘ</button>
+                <div class="bookmark-wrap">
+                  <button class="icon-button bookmark-toggle" id="bookmark-toggle" type="button" title="{{ _('Bookmarks') }}" aria-label="{{ _('Bookmarks') }}" aria-expanded="false" aria-controls="bookmark-popover" data-file="{{ selected }}" data-name="{{ selected|basename }}">🔖</button>
+                  <div class="bookmark-popover" id="bookmark-popover" hidden>
+                    <p class="export-title">{{ _('Bookmarks') }}</p>
+                    <button id="bookmark-file" class="source-button bookmark-file-btn" type="button"></button>
+                    <button id="bookmark-add" class="source-button secondary" type="button">{{ _('+ Bookmark this spot') }}</button>
+                    <p class="bookmark-section-label">{{ _('On this page') }}</p>
+                    <ul class="bookmark-list" id="bookmark-list"></ul>
+                    <p class="bookmark-empty" id="bookmark-empty">{{ _('No saved positions on this page yet.') }}</p>
+                  </div>
+                </div>
+                <div class="export-wrap">
+                  <button class="icon-button export-pdf" id="export-pdf" type="button" title="{{ _('Export as PDF') }}" aria-label="{{ _('Export as PDF') }}" aria-expanded="false" aria-controls="export-popover" data-file="{{ selected }}" data-name="{{ selected|basename }}">⤓</button>
+                  <div class="export-popover" id="export-popover" hidden>
+                    <p class="export-title">{{ _('Export PDF') }}</p>
+                    <label class="export-field">{{ _('Preset') }}
+                      <span class="export-preset-row">
+                        <select id="export-preset" class="search-input">
+                          <option value="">{{ _('Custom (no preset)') }}</option>
+                        </select>
+                        <button id="export-manage" type="button" class="icon-button" title="{{ _('Manage presets') }}" aria-label="{{ _('Manage presets') }}">⚙</button>
+                      </span>
+                    </label>
+                    <fieldset class="hf-fieldset">
+                      <legend>{{ _('Header') }}</legend>
+                      <div class="hf-cols">
+                        <input id="export-header-left" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Left') }}">
+                        <input id="export-header-center" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Center') }}">
+                        <input id="export-header-right" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Right') }}">
+                      </div>
+                    </fieldset>
+                    <fieldset class="hf-fieldset">
+                      <legend>{{ _('Footer') }}</legend>
+                      <div class="hf-cols">
+                        <input id="export-footer-left" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Left') }}">
+                        <input id="export-footer-center" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Center') }}">
+                        <input id="export-footer-right" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Right') }}">
+                      </div>
+                    </fieldset>
+                    <label class="export-check">
+                      <input id="export-include-toc" type="checkbox">
+                      <span>{{ _('Include contents page') }}</span>
+                    </label>
+                    <label class="export-check" id="export-cover-row">
+                      <input id="export-include-cover" type="checkbox">
+                      <span>{{ _('Include cover page') }} <small class="export-check-note">{{ _('(needs a preset)') }}</small></span>
+                    </label>
+                    <label class="export-check">
+                      <input id="export-include-frontmatter" type="checkbox">
+                      <span>{{ _('Include frontmatter panel') }}</span>
+                    </label>
+                    <p class="export-hint">Tokens: <code>{page}</code> <code>{total}</code> <code>{title}</code> <code>{filename}</code> <code>{url}</code> · dates <code>{date}</code> <code>{time}</code> <code>{datetime}</code> (formattable, e.g. <code>{date:%d/%m/%Y}</code>) · any frontmatter <code>{key}</code> like <code>{author}</code> <code>{version}</code> · line break <code>{br}</code> · formatting <code>**bold**</code> <code>*italic*</code> <code>~~strike~~</code></p>
+                    <div class="export-actions">
+                      <button id="export-run" class="source-button" type="button">{{ _('Download PDF') }}</button>
+                      <button id="export-run-docx" class="source-button secondary" type="button" title="{{ _('Export to Word (.docx) — uses the preset’s contents-page option; header/footer, cover and margins are PDF-only') }}">{{ _('Word (.docx)') }}</button>
+                      <span class="export-status" id="export-status" role="status" aria-live="polite"></span>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </header>
+
+            <article class="markdown-body">
+              {% if selected %}
+                {% if pdf_toc and toc %}
+                  <nav class="pdf-toc-page" aria-label="{{ _('Table of contents') }}">
+                    <h1 class="pdf-toc-title">{{ _('Contents') }}</h1>
+                    {{ toc|safe }}
+                  </nav>
+                {% endif %}
+                {{ content|safe }}
+              {% else %}
+                <p>{{ _('Add a <code>.md</code> file to this directory, then refresh the browser.')|safe }}</p>
+              {% endif %}
+            </article>
+          </div>
+          {% if toc %}
+            <aside class="toc-panel" id="toc-panel">
+              <div class="toc-panel-header">
+                <p class="toc-panel-title">{{ _('On this page') }}</p>
+                <button class="icon-button toc-collapse" id="toc-collapse" type="button" title="{{ _('Hide table of contents') }}" aria-label="{{ _('Hide table of contents') }}" aria-controls="toc-panel" aria-expanded="true">»</button>
+              </div>
+              {{ toc|safe }}
+            </aside>
+            <button class="toc-show" id="toc-show" type="button" title="{{ _('Show table of contents') }}" aria-label="{{ _('Show table of contents') }}" aria-controls="toc-panel" aria-expanded="false">≡</button>
+          {% endif %}
+        </div>
+      </main>
+    </div>
+
+    <div class="preset-modal" id="preset-modal" hidden role="dialog" aria-modal="true" aria-label="{{ _('PDF presets') }}">
+      <div class="preset-modal-card">
+        <div class="preset-modal-head">
+          <p class="preset-modal-title">{{ _('PDF presets') }}</p>
+          <button class="icon-button" id="preset-close" type="button" title="{{ _('Close (Esc)') }}" aria-label="{{ _('Close') }}">✕</button>
+        </div>
+        <div class="preset-modal-body">
+          <div class="preset-list-col">
+            <ul class="preset-list" id="preset-list"></ul>
+            <button class="source-button" id="preset-new" type="button">{{ _('+ New preset') }}</button>
+          </div>
+          <form class="preset-form" id="preset-form">
+            <input type="hidden" id="pf-id">
+            <label class="export-field">{{ _('Name') }}
+              <input id="pf-name" class="search-input" type="text" autocomplete="off" required>
+            </label>
+            <fieldset class="hf-fieldset">
+              <legend>{{ _('Header') }}</legend>
+              <div class="hf-cols">
+                <input id="pf-header-left" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Left') }}">
+                <input id="pf-header-center" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Center') }}">
+                <input id="pf-header-right" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Right') }}">
+              </div>
+            </fieldset>
+            <fieldset class="hf-fieldset">
+              <legend>{{ _('Footer') }}</legend>
+              <div class="hf-cols">
+                <input id="pf-footer-left" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Left') }}">
+                <input id="pf-footer-center" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Center') }}">
+                <input id="pf-footer-right" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{{ _('Right') }}">
+              </div>
+            </fieldset>
+            <p class="export-hint">Tokens: <code>{page}</code> <code>{total}</code> <code>{title}</code> <code>{filename}</code> <code>{url}</code> · dates <code>{date}</code> <code>{time}</code> <code>{datetime}</code> (formattable, e.g. <code>{date:%d/%m/%Y}</code>) · any frontmatter <code>{key}</code> like <code>{author}</code> <code>{version}</code> · line break <code>{br}</code> · formatting <code>**bold**</code> <code>*italic*</code> <code>~~strike~~</code></p>
+            <label class="export-field">{{ _('Download file name') }}
+              <input id="pf-filename" class="search-input" type="text" autocomplete="off" spellcheck="false" placeholder="{title} - {version}">
+            </label>
+            <p class="export-hint">Name of the downloaded PDF / Word file. Same tokens — <code>{title}</code>, <code>{author}</code>, any frontmatter <code>{key}</code>, <code>{date}</code>… The <code>.pdf</code>/<code>.docx</code> extension is added automatically. Empty → <code>{title}</code>.</p>
+            <div class="preset-form-grid">
+              <label class="export-field">{{ _('Logo position') }}
+                <select id="pf-logopos" class="search-input">
+                  <option value="left">{{ _('Left') }}</option>
+                  <option value="center">{{ _('Center') }}</option>
+                  <option value="right">{{ _('Right') }}</option>
+                </select>
+              </label>
+              <label class="export-field">{{ _('Logo image') }}
+                <input id="pf-logo" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svg,image/*">
+              </label>
+            </div>
+            <div class="preset-logo-preview" id="pf-logo-preview" hidden>
+              <img id="pf-logo-img" alt="{{ _('Logo preview') }}">
+              <button type="button" id="pf-logo-remove" class="preset-link danger">{{ _('Remove logo') }}</button>
+            </div>
+            <div class="preset-form-grid">
+              <label class="export-field">{{ _('Page size') }}
+                <select id="pf-pagesize" class="search-input">
+                  <option value="A4">A4</option>
+                  <option value="Letter">Letter</option>
+                  <option value="Legal">Legal</option>
+                  <option value="Tabloid">{{ _('Tabloid / Ledger (11×17)') }}</option>
+                </select>
+              </label>
+              <label class="export-field">{{ _('Orientation') }}
+                <select id="pf-orientation" class="search-input">
+                  <option value="portrait">{{ _('Portrait') }}</option>
+                  <option value="landscape">{{ _('Landscape') }}</option>
+                </select>
+              </label>
+            </div>
+            <div class="preset-form-grid">
+              <label class="export-field">{{ _('Body font') }}
+                <select id="pf-fontfamily" class="search-input"></select>
+              </label>
+              <label class="export-field">{{ _('Body font size (percent)') }}
+                <input id="pf-fontscale" class="search-input" type="number" min="50" max="200" step="5">
+              </label>
+            </div>
+            <label class="export-check">
+              <input id="pf-include-toc" type="checkbox">
+              <span>{{ _('Include contents page (clickable, before the document)') }}</span>
+            </label>
+            <label class="export-check">
+              <input id="pf-include-frontmatter" type="checkbox">
+              <span>{{ _('Include frontmatter panel in the PDF body') }}</span>
+            </label>
+            <fieldset class="hf-fieldset preset-cover">
+              <legend>{{ _('Cover page') }}</legend>
+              <label class="export-check">
+                <input id="pf-cover-enabled" type="checkbox">
+                <span>{{ _('Add a cover page') }}</span>
+              </label>
+              <div class="preset-cover-fields" id="pf-cover-fields">
+                <label class="export-field">{{ _('Title') }}
+                  <input id="pf-cover-title" class="search-input" type="text" autocomplete="off" placeholder="{title}">
+                </label>
+                <label class="export-field">{{ _('Subtitle') }}
+                  <input id="pf-cover-subtitle" class="search-input" type="text" autocomplete="off" placeholder="{{ _('e.g. Technical Specification') }}">
+                </label>
+                <label class="export-field">{{ _('Metadata rows (one <code>Label: value</code> per line)')|safe }}
+                  <textarea id="pf-cover-meta" class="search-input" rows="4" autocomplete="off" spellcheck="false" placeholder="Version: {version}&#10;Date: {date}&#10;Author: {author}"></textarea>
+                </label>
+                <label class="export-field">{{ _('Footer line') }}
+                  <input id="pf-cover-footer" class="search-input" type="text" autocomplete="off" placeholder="© {author} · Confidential">
+                </label>
+                <p class="export-hint">Tokens resolve from the document's frontmatter: <code>{title}</code> <code>{author}</code> <code>{version}</code> <code>{status}</code> … any <code>{key}</code> (missing values drop their row). Date/time: <code>{date}</code> <code>{time}</code> <code>{datetime}</code> — format inline, e.g. <code>{date:%d/%m/%Y}</code> <code>{time:%I:%M %p}</code>.</p>
+                <div class="preset-form-grid">
+                  <label class="export-field">{{ _('Cover image') }}
+                    <select id="pf-cover-image-source" class="search-input">
+                      <option value="none">{{ _('None') }}</option>
+                      <option value="logo">{{ _('Use preset logo') }}</option>
+                      <option value="custom">{{ _('Upload an image') }}</option>
+                    </select>
+                  </label>
+                  <label class="export-check">
+                    <input id="pf-blank-after-cover" type="checkbox">
+                    <span>{{ _('Blank page after cover') }}</span>
+                  </label>
+                </div>
+                <div class="preset-cover-upload" id="pf-cover-upload" hidden>
+                  <label class="export-field">{{ _('Image file') }}
+                    <input id="pf-cover-image" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svg,image/*">
+                  </label>
+                  <div class="preset-logo-preview" id="pf-cover-preview" hidden>
+                    <img id="pf-cover-img" alt="{{ _('Cover image preview') }}">
+                    <button type="button" id="pf-cover-remove" class="preset-link danger">{{ _('Remove cover image') }}</button>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="hf-fieldset preset-cover">
+              <legend>{{ _('Default values (fallback)') }}</legend>
+              <label class="export-check">
+                <input id="pf-use-fallback" type="checkbox">
+                <span>{{ _('Use these defaults when the document has no frontmatter (or is missing a key)') }}</span>
+              </label>
+              <div class="preset-fallback-fields" id="pf-fallback-fields">
+                <label class="export-field">{{ _('Fallback values (one <code>key: value</code> per line)')|safe }}
+                  <textarea id="pf-fallback-values" class="search-input" rows="4" autocomplete="off" spellcheck="false" placeholder="author: Acme Corp&#10;version: 1.0&#10;status: Draft"></textarea>
+                </label>
+                <p class="export-hint">A document's own frontmatter always wins; these only fill the gaps. Reserved tokens (<code>{date}</code>, <code>{page}</code>, <code>{title}</code>, …) are unaffected.</p>
+              </div>
+            </fieldset>
+            <fieldset class="preset-margins">
+              <legend>{{ _('Margins (mm)') }}</legend>
+              <label>{{ _('Top') }}<input id="pf-mt" type="number" min="0" max="100" step="1"></label>
+              <label>{{ _('Bottom') }}<input id="pf-mb" type="number" min="0" max="100" step="1"></label>
+              <label>{{ _('Left') }}<input id="pf-ml" type="number" min="0" max="100" step="1"></label>
+              <label>{{ _('Right') }}<input id="pf-mr" type="number" min="0" max="100" step="1"></label>
+            </fieldset>
+            <div class="preset-form-actions">
+              <button class="source-button" id="pf-save" type="submit">{{ _('Save preset') }}</button>
+              <button class="source-button secondary" id="pf-duplicate" type="button" hidden>{{ _('Duplicate') }}</button>
+              <button class="preset-link danger" id="pf-delete" type="button" hidden>{{ _('Delete') }}</button>
+              <span class="export-status" id="pf-status" role="status" aria-live="polite"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-overlay" id="diagram-overlay" hidden role="dialog" aria-modal="true" aria-label="{{ _('Diagram viewer') }}">
+      <button class="icon-button diagram-overlay-close" id="diagram-close" type="button" title="{{ _('Close (Esc)') }}" aria-label="{{ _('Close') }}">✕</button>
+      <div class="diagram-overlay-toolbar">
+        <div class="diagram-overlay-toolbar-row" aria-label="{{ _('Zoom controls') }}">
+          <span class="toolbar-label">{{ _('Zoom') }}</span>
+          <button class="icon-button" id="diagram-zoom-out" type="button" title="{{ _('Zoom out') }}" aria-label="{{ _('Zoom out') }}">−</button>
+          <span class="toolbar-value" id="diagram-zoom-value" aria-live="polite" title="{{ _('Zoom level') }}">100%</span>
+          <button class="icon-button" id="diagram-zoom-in" type="button" title="{{ _('Zoom in') }}" aria-label="{{ _('Zoom in') }}">+</button>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <button class="icon-button diagram-zoom-preset" data-zoom="0.5" type="button" title="{{ _('Zoom') }} 0.5×" aria-label="{{ _('Zoom') }} 0.5×">0.5×</button>
+          <button class="icon-button diagram-zoom-preset" id="diagram-zoom-reset" data-zoom="1" type="button" title="{{ _('Reset zoom (0)') }}" aria-label="{{ _('Reset zoom') }}">1×</button>
+          <button class="icon-button diagram-zoom-preset" data-zoom="1.5" type="button" title="{{ _('Zoom') }} 1.5×" aria-label="{{ _('Zoom') }} 1.5×">1.5×</button>
+          <button class="icon-button diagram-zoom-preset" data-zoom="2" type="button" title="{{ _('Zoom') }} 2×" aria-label="{{ _('Zoom') }} 2×">2×</button>
+          <button class="icon-button diagram-zoom-preset" data-zoom="2.5" type="button" title="{{ _('Zoom') }} 2.5×" aria-label="{{ _('Zoom') }} 2.5×">2.5×</button>
+          <button class="icon-button diagram-zoom-preset" data-zoom="3" type="button" title="{{ _('Zoom') }} 3×" aria-label="{{ _('Zoom') }} 3×">3×</button>
+        </div>
+        <div class="diagram-overlay-toolbar-row" aria-label="{{ _('Backdrop opacity') }}">
+          <span class="toolbar-label">{{ _('Opacity') }}</span>
+          <button class="icon-button" id="diagram-opacity-down" type="button" title="{{ _('Decrease backdrop opacity') }}" aria-label="{{ _('Decrease backdrop opacity') }}">▽</button>
+          <span class="toolbar-value" id="diagram-opacity-value" aria-live="polite" title="{{ _('Backdrop opacity') }}">100%</span>
+          <button class="icon-button" id="diagram-opacity-up" type="button" title="{{ _('Increase backdrop opacity') }}" aria-label="{{ _('Increase backdrop opacity') }}">△</button>
+        </div>
+      </div>
+      <div class="diagram-overlay-stage" id="diagram-overlay-stage"></div>
+    </div>
+
+    <script>
+      // Active-locale catalog for client strings; t() in app.js reads it.
+      window.I18N = {{ js_i18n|tojson }};
+      // Active content root — scopes editor draft autosave keys per source.
+      window.MARKWRIGHT_ROOT = {{ (content_dir|string)|tojson }};
+    </script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      window.__mermaid = mermaid;
+      // app.js (a classic script) executes before this deferred module, so its
+      // shared theme-config builder is available here for the first render.
+      const cfg = (window.__mermaidThemeConfig && window.__mermaidThemeConfig()) || { theme: "default" };
+      mermaid.initialize(Object.assign({ startOnLoad: false }, cfg));
+      document.querySelectorAll("pre.mermaid").forEach((el) => {
+        el.dataset.source = el.textContent;
+      });
+      Promise.resolve(mermaid.run({ querySelector: "pre.mermaid" })).finally(() => {
+        if (window.__onMermaidRendered) window.__onMermaidRendered();
+      });
+    </script>
+    <script src="{{ asset_url('js/app.js') }}"></script>
+  </body>
+</html>

@@ -1,0 +1,1053 @@
+# English translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-06-08 09:11-0600\n"
+"PO-Revision-Date: 2026-06-02 17:30-0600\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: app.py:216
+msgid "source is required"
+msgstr ""
+
+#: app.py:235
+msgid "git command timed out"
+msgstr ""
+
+#: app.py:237
+msgid "git is not installed or not on PATH"
+msgstr ""
+
+#: app.py:258
+msgid "path is required"
+msgstr ""
+
+#: app.py:266
+msgid "Cannot remove the active source"
+msgstr ""
+
+#: app.py:271
+msgid "Not found in recents"
+msgstr ""
+
+#: app.py:314 app.py:362 app.py:388 app.py:418 app.py:451
+msgid "This source is read-only"
+msgstr ""
+
+#: app.py:319 app.py:496
+msgid "file and content are required"
+msgstr ""
+
+#: app.py:321 app.py:324 app.py:392 app.py:395 app.py:422 app.py:425 app.py:454
+#: app.py:498 app.py:513
+msgid "not found"
+msgstr ""
+
+#: app.py:345
+msgid "A file name is required"
+msgstr ""
+
+#: app.py:352
+msgid "Use a .md or .rst file extension"
+msgstr ""
+
+#: app.py:370 app.py:404
+msgid "A file with that name already exists"
+msgstr ""
+
+#: app.py:457
+msgid "No image provided"
+msgstr ""
+
+#: app.py:460 app.py:947
+#, python-format
+msgid "Unsupported image format: %(ext)s"
+msgstr ""
+
+#: app.py:460 app.py:931 app.py:947
+msgid "(no extension)"
+msgstr ""
+
+#: app.py:463
+msgid "The image exceeds the 10 MB limit"
+msgstr ""
+
+#: app.py:511
+msgid "file is required"
+msgstr ""
+
+#: app.py:573
+msgid "Playwright is not installed. Run: uv pip install playwright"
+msgstr ""
+
+#: app.py:732 app.py:838
+msgid ""
+"Pandoc is not installed. Install it (e.g. `apt install pandoc`) to export"
+" to Word."
+msgstr ""
+
+#: app.py:844
+msgid "Could not generate the DOCX. See the server logs for details."
+msgstr ""
+
+#: app.py:869 static/js/app.js:2734
+msgid "Name is required"
+msgstr ""
+
+#: app.py:931
+#, python-format
+msgid "Unsupported logo format: %(ext)s"
+msgstr ""
+
+#: app.py:934
+msgid "The logo exceeds the 2 MB limit"
+msgstr ""
+
+#: app.py:950
+msgid "The cover image exceeds the 2 MB limit"
+msgstr ""
+
+#: app.py:969 app.py:999
+msgid "Not found"
+msgstr ""
+
+#: static/js/app.js:206
+msgid "This document has no frontmatter"
+msgstr ""
+
+#: static/js/app.js:208
+msgid "Frontmatter hidden — click to show"
+msgstr ""
+
+#: static/js/app.js:209
+msgid "Hide frontmatter panel"
+msgstr ""
+
+#: static/js/app.js:237 static/js/app.js:268 static/js/app.js:298
+msgid "Show source"
+msgstr ""
+
+#: static/js/app.js:238
+msgid "Toggle diagram source"
+msgstr ""
+
+#: static/js/app.js:298
+msgid "Show diagram"
+msgstr ""
+
+#: static/js/app.js:429
+msgid "Font size (default)"
+msgstr ""
+
+#: static/js/app.js:430
+#, python-format
+msgid "Reset font size to %(size)s"
+msgstr ""
+
+#: static/js/app.js:458 static/js/app.js:2540
+msgid "System default"
+msgstr ""
+
+#: static/js/app.js:488 static/js/app.js:528
+msgid "Copy"
+msgstr ""
+
+#: static/js/app.js:489
+msgid "Copy code to clipboard"
+msgstr ""
+
+#: static/js/app.js:522
+msgid "Copied!"
+msgstr ""
+
+#: static/js/app.js:525 static/js/app.js:2461 static/js/app.js:2789
+#: static/js/app.js:2814 static/js/app.js:2839
+msgid "Failed"
+msgstr ""
+
+#: static/js/app.js:550
+#, python-format
+msgid "%(words)s words · ~%(min)s min read"
+msgstr ""
+
+#: static/js/app.js:561 static/js/app.js:562
+msgid "Copy link to this section"
+msgstr ""
+
+#: static/js/app.js:586 static/js/app.js:587
+msgid "Back to top"
+msgstr ""
+
+#: static/js/app.js:618
+msgid "Exit focus reading (Esc)"
+msgstr ""
+
+#: static/js/app.js:619
+msgid "Exit focus reading"
+msgstr ""
+
+#: static/js/app.js:633 templates/index.html:96
+msgid "Narrow"
+msgstr ""
+
+#: static/js/app.js:633 templates/index.html:86 templates/index.html:97
+msgid "Default"
+msgstr ""
+
+#: static/js/app.js:633 templates/index.html:98
+msgid "Wide"
+msgstr ""
+
+#: static/js/app.js:633 templates/index.html:99
+msgid "Full"
+msgstr ""
+
+#: static/js/app.js:638 static/js/app.js:639
+msgid "Change content width"
+msgstr ""
+
+#: static/js/app.js:672
+msgid "Almost done"
+msgstr ""
+
+#: static/js/app.js:673
+#, python-format
+msgid "~%(min)s min left"
+msgstr ""
+
+#: static/js/app.js:813 static/js/app.js:814 static/js/app.js:832
+msgid "Remove bookmark"
+msgstr ""
+
+#: static/js/app.js:832
+msgid "Bookmark this file"
+msgstr ""
+
+#: static/js/app.js:886
+msgid "★ Remove file bookmark"
+msgstr ""
+
+#: static/js/app.js:886
+msgid "☆ Bookmark this file"
+msgstr ""
+
+#: static/js/app.js:924
+#, python-format
+msgid "Position at %(px)spx"
+msgstr ""
+
+#: static/js/app.js:938
+msgid "(untitled)"
+msgstr ""
+
+#: static/js/app.js:944 static/js/app.js:945
+msgid "Remove"
+msgstr ""
+
+#: static/js/app.js:984
+msgid "✓ Bookmarked"
+msgstr ""
+
+#: static/js/app.js:988 templates/index.html:242
+msgid "+ Bookmark this spot"
+msgstr ""
+
+#: static/js/app.js:1028 static/js/app.js:1029
+msgid "Tap to bookmark this spot · hold to open the list"
+msgstr ""
+
+#: static/js/app.js:1161
+msgid "Expand all"
+msgstr ""
+
+#: static/js/app.js:1161 templates/index.html:153
+msgid "Collapse all"
+msgstr ""
+
+#: static/js/app.js:1162
+msgid "Expand all folders"
+msgstr ""
+
+#: static/js/app.js:1162 templates/index.html:151
+msgid "Collapse all folders"
+msgstr ""
+
+#: static/js/app.js:1410
+msgid "Loading…"
+msgstr ""
+
+#: static/js/app.js:1419 static/js/app.js:1461
+#, python-format
+msgid "Failed (%(status)s)"
+msgstr ""
+
+#: static/js/app.js:1423
+msgid "Loaded — reloading…"
+msgstr ""
+
+#: static/js/app.js:1452
+msgid "Removing…"
+msgstr ""
+
+#: static/js/app.js:1465
+msgid "Removed — reloading…"
+msgstr ""
+
+#: static/js/app.js:1505
+msgid "View rendered"
+msgstr ""
+
+#: static/js/app.js:1513 templates/index.html:234
+msgid "View source"
+msgstr ""
+
+#: static/js/app.js:1629
+msgid "Save"
+msgstr ""
+
+#: static/js/app.js:1630
+msgid "Save (Ctrl+S)"
+msgstr ""
+
+#: static/js/app.js:1634 templates/index.html:223
+msgid "Cancel"
+msgstr ""
+
+#: static/js/app.js:1646
+msgid "Bold (Ctrl+B)"
+msgstr ""
+
+#: static/js/app.js:1647
+msgid "Italic (Ctrl+I)"
+msgstr ""
+
+#: static/js/app.js:1648
+msgid "Inline code"
+msgstr ""
+
+#: static/js/app.js:1649
+msgid "Insert link (Ctrl+K)"
+msgstr ""
+
+#: static/js/app.js:1657
+msgid "Preview"
+msgstr ""
+
+#: static/js/app.js:1665
+msgid "Sync scroll"
+msgstr ""
+
+#: static/js/app.js:1666
+msgid "Keep editor and preview scroll positions aligned"
+msgstr ""
+
+#: static/js/app.js:1674 static/js/app.js:1675
+msgid "Toggle fullscreen"
+msgstr ""
+
+#: static/js/app.js:1681
+msgid "Unsaved changes"
+msgstr ""
+
+#: static/js/app.js:1702
+#, python-format
+msgid "An unsaved draft from %(when)s was found. Restore it?"
+msgstr ""
+
+#: static/js/app.js:1735
+msgid "Stop editing"
+msgstr ""
+
+#: static/js/app.js:1806
+#, python-format
+msgid "%(w)s words · %(c)s chars"
+msgstr ""
+
+#: static/js/app.js:1975
+msgid "Uploading image…"
+msgstr ""
+
+#: static/js/app.js:2070 static/js/app.js:2739
+msgid "Saving…"
+msgstr ""
+
+#: static/js/app.js:2087 static/js/app.js:2787
+msgid "Saved"
+msgstr ""
+
+#: static/js/app.js:2105
+msgid "Discard unsaved changes?"
+msgstr ""
+
+#: static/js/app.js:2122 templates/index.html:232
+msgid "Edit"
+msgstr ""
+
+#: static/js/app.js:2208
+msgid "New file"
+msgstr ""
+
+#: static/js/app.js:2210
+msgid "notes.md or docs/notes.md"
+msgstr ""
+
+#: static/js/app.js:2211
+msgid "Create"
+msgstr ""
+
+#: static/js/app.js:2214
+msgid "Rename file"
+msgstr ""
+
+#: static/js/app.js:2216
+msgid "Rename"
+msgstr ""
+
+#: static/js/app.js:2219
+#, python-format
+msgid "Delete \"%(name)s\"? This cannot be undone."
+msgstr ""
+
+#: static/js/app.js:2220 templates/index.html:479
+msgid "Delete"
+msgstr ""
+
+#: static/js/app.js:2257
+msgid "Working…"
+msgstr ""
+
+#: static/js/app.js:2419
+msgid "Generating…"
+msgstr ""
+
+#: static/js/app.js:2437 static/js/app.js:2778 static/js/app.js:2808
+#: static/js/app.js:2831
+#, python-format
+msgid "Error %(status)s"
+msgstr ""
+
+#: static/js/app.js:2458
+msgid "Done"
+msgstr ""
+
+#: static/js/app.js:2657
+msgid "No presets yet."
+msgstr ""
+
+#: static/js/app.js:2799
+msgid "Duplicating…"
+msgstr ""
+
+#: static/js/app.js:2812
+msgid "Duplicated"
+msgstr ""
+
+#: static/js/app.js:2823
+#, python-format
+msgid "Delete preset \"%(name)s\"?"
+msgstr ""
+
+#: static/js/app.js:2853
+#, python-format
+msgid "Remove \"%(label)s\" from recents and delete the cached clone?"
+msgstr ""
+
+#: templates/index.html:17
+msgid "Appearance settings"
+msgstr ""
+
+#: templates/index.html:19
+msgid "Hide sidebar"
+msgstr ""
+
+#: templates/index.html:22
+msgid "Appearance"
+msgstr ""
+
+#: templates/index.html:23 templates/index.html:24
+msgid "Language"
+msgstr ""
+
+#: templates/index.html:29 templates/index.html:30
+msgid "Theme"
+msgstr ""
+
+#: templates/index.html:31 templates/index.html:63
+msgid "Light"
+msgstr ""
+
+#: templates/index.html:32 templates/index.html:64 templates/index.html:88
+msgid "Dark"
+msgstr ""
+
+#: templates/index.html:33 templates/index.html:65
+msgid "Sepia"
+msgstr ""
+
+#: templates/index.html:54 templates/index.html:55
+msgid "Font"
+msgstr ""
+
+#: templates/index.html:57 templates/index.html:58
+msgid "Diagram theme"
+msgstr ""
+
+#: templates/index.html:59
+msgid "Match page"
+msgstr ""
+
+#: templates/index.html:60
+msgid "Auto (match page)"
+msgstr ""
+
+#: templates/index.html:62
+msgid "Page palettes"
+msgstr ""
+
+#: templates/index.html:85
+msgid "Mermaid built-in"
+msgstr ""
+
+#: templates/index.html:87
+msgid "Neutral"
+msgstr ""
+
+#: templates/index.html:89
+msgid "Forest"
+msgstr ""
+
+#: templates/index.html:90
+msgid "Base"
+msgstr ""
+
+#: templates/index.html:94 templates/index.html:95
+msgid "Content width"
+msgstr ""
+
+#: templates/index.html:103
+msgid "Font size"
+msgstr ""
+
+#: templates/index.html:104
+msgid "Content font size"
+msgstr ""
+
+#: templates/index.html:105
+msgid "Decrease font size"
+msgstr ""
+
+#: templates/index.html:106
+msgid "Reset font size"
+msgstr ""
+
+#: templates/index.html:107
+msgid "Increase font size"
+msgstr ""
+
+#: templates/index.html:115
+msgid "Source"
+msgstr ""
+
+#: templates/index.html:119
+msgid "/path/to/folder or https://github.com/user/repo"
+msgstr ""
+
+#: templates/index.html:121
+msgid "Open"
+msgstr ""
+
+#: templates/index.html:125
+msgid "Recent"
+msgstr ""
+
+#: templates/index.html:133
+msgid "Remove from recents"
+msgstr ""
+
+#: templates/index.html:133
+msgid "(deletes cached clone)"
+msgstr ""
+
+#: templates/index.html:133
+#, python-format
+msgid "Remove %(label)s from recents"
+msgstr ""
+
+#: templates/index.html:141
+msgid "Search markdown files"
+msgstr ""
+
+#: templates/index.html:142
+msgid "Filter files..."
+msgstr ""
+
+#: templates/index.html:145
+msgid "Sort folders and files"
+msgstr ""
+
+#: templates/index.html:145
+msgid "Sort order"
+msgstr ""
+
+#: templates/index.html:146
+msgid "Name (A→Z)"
+msgstr ""
+
+#: templates/index.html:147
+msgid "Name (Z→A)"
+msgstr ""
+
+#: templates/index.html:148
+msgid "Newest first"
+msgstr ""
+
+#: templates/index.html:149
+msgid "Oldest first"
+msgstr ""
+
+#: templates/index.html:157
+msgid "Bookmarked files"
+msgstr ""
+
+#: templates/index.html:158
+msgid "Bookmarked"
+msgstr ""
+
+#: templates/index.html:162
+msgid "Markdown files"
+msgstr ""
+
+#: templates/index.html:191
+msgid "No markdown files found."
+msgstr ""
+
+#: templates/index.html:196
+msgid "Show sidebar"
+msgstr ""
+
+#: templates/index.html:203
+msgid "Current file"
+msgstr ""
+
+#: templates/index.html:204
+msgid "No markdown file selected"
+msgstr ""
+
+#: templates/index.html:205
+#, python-format
+msgid "Root: %(dir)s"
+msgstr ""
+
+#: templates/index.html:209
+msgid "File actions"
+msgstr ""
+
+#: templates/index.html:212
+msgid "New file…"
+msgstr ""
+
+#: templates/index.html:214
+msgid "Rename…"
+msgstr ""
+
+#: templates/index.html:215
+msgid "Delete…"
+msgstr ""
+
+#: templates/index.html:232
+msgid "Edit source"
+msgstr ""
+
+#: templates/index.html:234
+msgid "Toggle source view"
+msgstr ""
+
+#: templates/index.html:235
+msgid "Focus reading (F)"
+msgstr ""
+
+#: templates/index.html:235
+msgid "Focus reading"
+msgstr ""
+
+#: templates/index.html:236
+msgid "Show/hide frontmatter panel"
+msgstr ""
+
+#: templates/index.html:236
+msgid "Toggle frontmatter panel"
+msgstr ""
+
+#: templates/index.html:238 templates/index.html:240
+msgid "Bookmarks"
+msgstr ""
+
+#: templates/index.html:243 templates/index.html:316
+msgid "On this page"
+msgstr ""
+
+#: templates/index.html:245
+msgid "No saved positions on this page yet."
+msgstr ""
+
+#: templates/index.html:249
+msgid "Export as PDF"
+msgstr ""
+
+#: templates/index.html:251
+msgid "Export PDF"
+msgstr ""
+
+#: templates/index.html:252
+msgid "Preset"
+msgstr ""
+
+#: templates/index.html:255
+msgid "Custom (no preset)"
+msgstr ""
+
+#: templates/index.html:257
+msgid "Manage presets"
+msgstr ""
+
+#: templates/index.html:261 templates/index.html:344
+msgid "Header"
+msgstr ""
+
+#: templates/index.html:263 templates/index.html:271 templates/index.html:346
+#: templates/index.html:354 templates/index.html:367 templates/index.html:473
+msgid "Left"
+msgstr ""
+
+#: templates/index.html:264 templates/index.html:272 templates/index.html:347
+#: templates/index.html:355 templates/index.html:368
+msgid "Center"
+msgstr ""
+
+#: templates/index.html:265 templates/index.html:273 templates/index.html:348
+#: templates/index.html:356 templates/index.html:369 templates/index.html:474
+msgid "Right"
+msgstr ""
+
+#: templates/index.html:269 templates/index.html:352
+msgid "Footer"
+msgstr ""
+
+#: templates/index.html:278
+msgid "Include contents page"
+msgstr ""
+
+#: templates/index.html:282
+msgid "Include cover page"
+msgstr ""
+
+#: templates/index.html:282
+msgid "(needs a preset)"
+msgstr ""
+
+#: templates/index.html:286
+msgid "Include frontmatter panel"
+msgstr ""
+
+#: templates/index.html:290
+msgid "Download PDF"
+msgstr ""
+
+#: templates/index.html:291
+msgid ""
+"Export to Word (.docx) — uses the preset’s contents-page option; "
+"header/footer, cover and margins are PDF-only"
+msgstr ""
+
+#: templates/index.html:291
+msgid "Word (.docx)"
+msgstr ""
+
+#: templates/index.html:302
+msgid "Table of contents"
+msgstr ""
+
+#: templates/index.html:303
+msgid "Contents"
+msgstr ""
+
+#: templates/index.html:309
+msgid "Add a <code>.md</code> file to this directory, then refresh the browser."
+msgstr ""
+
+#: templates/index.html:317
+msgid "Hide table of contents"
+msgstr ""
+
+#: templates/index.html:321
+msgid "Show table of contents"
+msgstr ""
+
+#: templates/index.html:327 templates/index.html:330
+msgid "PDF presets"
+msgstr ""
+
+#: templates/index.html:331 templates/index.html:488
+msgid "Close (Esc)"
+msgstr ""
+
+#: templates/index.html:331 templates/index.html:488
+msgid "Close"
+msgstr ""
+
+#: templates/index.html:336
+msgid "+ New preset"
+msgstr ""
+
+#: templates/index.html:340
+msgid "Name"
+msgstr ""
+
+#: templates/index.html:360
+msgid "Download file name"
+msgstr ""
+
+#: templates/index.html:365
+msgid "Logo position"
+msgstr ""
+
+#: templates/index.html:372
+msgid "Logo image"
+msgstr ""
+
+#: templates/index.html:377
+msgid "Logo preview"
+msgstr ""
+
+#: templates/index.html:378
+msgid "Remove logo"
+msgstr ""
+
+#: templates/index.html:381
+msgid "Page size"
+msgstr ""
+
+#: templates/index.html:386
+msgid "Tabloid / Ledger (11×17)"
+msgstr ""
+
+#: templates/index.html:389
+msgid "Orientation"
+msgstr ""
+
+#: templates/index.html:391
+msgid "Portrait"
+msgstr ""
+
+#: templates/index.html:392
+msgid "Landscape"
+msgstr ""
+
+#: templates/index.html:397
+msgid "Body font"
+msgstr ""
+
+#: templates/index.html:400
+msgid "Body font size (percent)"
+msgstr ""
+
+#: templates/index.html:406
+msgid "Include contents page (clickable, before the document)"
+msgstr ""
+
+#: templates/index.html:410
+msgid "Include frontmatter panel in the PDF body"
+msgstr ""
+
+#: templates/index.html:413
+msgid "Cover page"
+msgstr ""
+
+#: templates/index.html:416
+msgid "Add a cover page"
+msgstr ""
+
+#: templates/index.html:419
+msgid "Title"
+msgstr ""
+
+#: templates/index.html:422
+msgid "Subtitle"
+msgstr ""
+
+#: templates/index.html:423
+msgid "e.g. Technical Specification"
+msgstr ""
+
+#: templates/index.html:425
+msgid "Metadata rows (one <code>Label: value</code> per line)"
+msgstr ""
+
+#: templates/index.html:428
+msgid "Footer line"
+msgstr ""
+
+#: templates/index.html:433
+msgid "Cover image"
+msgstr ""
+
+#: templates/index.html:435
+msgid "None"
+msgstr ""
+
+#: templates/index.html:436
+msgid "Use preset logo"
+msgstr ""
+
+#: templates/index.html:437
+msgid "Upload an image"
+msgstr ""
+
+#: templates/index.html:442
+msgid "Blank page after cover"
+msgstr ""
+
+#: templates/index.html:446
+msgid "Image file"
+msgstr ""
+
+#: templates/index.html:450
+msgid "Cover image preview"
+msgstr ""
+
+#: templates/index.html:451
+msgid "Remove cover image"
+msgstr ""
+
+#: templates/index.html:457
+msgid "Default values (fallback)"
+msgstr ""
+
+#: templates/index.html:460
+msgid ""
+"Use these defaults when the document has no frontmatter (or is missing a "
+"key)"
+msgstr ""
+
+#: templates/index.html:463
+msgid "Fallback values (one <code>key: value</code> per line)"
+msgstr ""
+
+#: templates/index.html:470
+msgid "Margins (mm)"
+msgstr ""
+
+#: templates/index.html:471
+msgid "Top"
+msgstr ""
+
+#: templates/index.html:472
+msgid "Bottom"
+msgstr ""
+
+#: templates/index.html:477
+msgid "Save preset"
+msgstr ""
+
+#: templates/index.html:478
+msgid "Duplicate"
+msgstr ""
+
+#: templates/index.html:487
+msgid "Diagram viewer"
+msgstr ""
+
+#: templates/index.html:490
+msgid "Zoom controls"
+msgstr ""
+
+#: templates/index.html:491 templates/index.html:496 templates/index.html:498
+#: templates/index.html:499 templates/index.html:500 templates/index.html:501
+msgid "Zoom"
+msgstr ""
+
+#: templates/index.html:492
+msgid "Zoom out"
+msgstr ""
+
+#: templates/index.html:493
+msgid "Zoom level"
+msgstr ""
+
+#: templates/index.html:494
+msgid "Zoom in"
+msgstr ""
+
+#: templates/index.html:497
+msgid "Reset zoom (0)"
+msgstr ""
+
+#: templates/index.html:497
+msgid "Reset zoom"
+msgstr ""
+
+#: templates/index.html:503 templates/index.html:506
+msgid "Backdrop opacity"
+msgstr ""
+
+#: templates/index.html:504
+msgid "Opacity"
+msgstr ""
+
+#: templates/index.html:505
+msgid "Decrease backdrop opacity"
+msgstr ""
+
+#: templates/index.html:507
+msgid "Increase backdrop opacity"
+msgstr ""
+
+#~ msgid "Could not generate the PDF: %(error)s"
+#~ msgstr ""
+
+#~ msgid "Could not generate the DOCX: %(error)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Chrome (or Chromium) is required for "
+#~ "PDF export but was not found. "
+#~ "Install Google Chrome and try again."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Chrome refused to load the page on"
+#~ " this port. Restart the viewer on "
+#~ "a different --port."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "PDF export timed out — the "
+#~ "document may be very large or a"
+#~ " diagram failed to load. See the "
+#~ "server logs for details."
+#~ msgstr ""
+
+#~ msgid "Could not generate the PDF. See the server logs for details."
+#~ msgstr ""
+
+#~ msgid "New file name (e.g. notes.md or docs/notes.md):"
+#~ msgstr ""
+
+#~ msgid "Rename file to:"
+#~ msgstr ""
+
+#~ msgid "Saved — reloading…"
+#~ msgstr ""
+
