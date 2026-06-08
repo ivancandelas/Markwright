@@ -81,6 +81,21 @@
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
   }
 
+  // Linearly blend two 6-digit hex colors (t=0 -> a, t=1 -> b). Returns `a`
+  // unchanged if either input isn't a parseable hex, so it degrades safely.
+  function mixHex(a, b, t) {
+    const ma = /^#?([0-9a-fA-F]{6})$/.exec(a || "");
+    const mb = /^#?([0-9a-fA-F]{6})$/.exec(b || "");
+    if (!ma || !mb) return a;
+    const na = parseInt(ma[1], 16);
+    const nb = parseInt(mb[1], 16);
+    const lerp = (x, y) => Math.round(x + (y - x) * t);
+    const r = lerp((na >> 16) & 255, (nb >> 16) & 255);
+    const g = lerp((na >> 8) & 255, (nb >> 8) & 255);
+    const bch = lerp(na & 255, nb & 255);
+    return "#" + ((1 << 24) | (r << 16) | (g << 8) | bch).toString(16).slice(1);
+  }
+
   function paletteThemeConfig(themeName) {
     const p = readPalette(themeName);
     return {
@@ -101,8 +116,11 @@
         textColor: p.text,
         mainBkg: p.panelAlt,
         nodeBorder: p.accent,
-        clusterBkg: p.panel,
-        clusterBorder: p.border,
+        // Subgraph (cluster) fill: a faint accent tint of the page base so the
+        // group reads as a lightly theme-colored canvas with nodes (panelAlt)
+        // floating on top; border is a stronger accent blend for definition.
+        clusterBkg: mixHex(p.bg, p.accent, 0.1),
+        clusterBorder: mixHex(p.border, p.accent, 0.5),
         titleColor: p.text,
         edgeLabelBackground: p.panel,
         labelBoxBkgColor: p.panelAlt,
