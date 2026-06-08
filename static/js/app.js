@@ -165,6 +165,85 @@
   if (sidebarCollapse) sidebarCollapse.addEventListener("click", () => setSidebarHidden(true));
   if (sidebarShow) sidebarShow.addEventListener("click", () => setSidebarHidden(false));
 
+  // --- Keyboard shortcuts help + global single-key shortcuts ---------------
+  // A help dialog listing every shortcut (opened from the ⌨ button or "?"),
+  // plus a handful of app-wide single-key shortcuts. All single-key shortcuts
+  // bail while the user is typing or editing, mirroring the focus-mode "f".
+  (function setupShortcuts() {
+    const modal = document.getElementById("shortcuts-modal");
+    const openBtn = document.getElementById("shortcuts-toggle");
+    const closeBtn = document.getElementById("shortcuts-close");
+    if (!modal) return;
+    let lastFocused = null;
+
+    function isOpen() { return !modal.hidden; }
+    function setOpen(open) {
+      if (open) lastFocused = document.activeElement;
+      modal.hidden = !open;
+      if (openBtn) openBtn.setAttribute("aria-expanded", String(open));
+      if (open) {
+        (closeBtn || modal).focus();
+      } else if (lastFocused && lastFocused.focus) {
+        lastFocused.focus();
+      }
+    }
+
+    if (openBtn) openBtn.addEventListener("click", () => setOpen(!isOpen()));
+    if (closeBtn) closeBtn.addEventListener("click", () => setOpen(false));
+    // Click on the backdrop (outside the card) closes.
+    modal.addEventListener("click", (event) => { if (event.target === modal) setOpen(false); });
+
+    function clickIf(id) {
+      const el = document.getElementById(id);
+      if (el && !el.disabled) el.click();
+    }
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && isOpen()) { event.preventDefault(); setOpen(false); return; }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      const ae = document.activeElement;
+      const typing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable ||
+                            (ae.closest && ae.closest(".CodeMirror")));
+      // "?" (Shift+/) opens help from anywhere except while typing.
+      if (event.key === "?") {
+        if (typing) return;
+        event.preventDefault();
+        setOpen(!isOpen());
+        return;
+      }
+      if (typing || editActive || isOpen()) return;
+
+      switch (event.key) {
+        case "/":
+          if (searchInput) { event.preventDefault(); searchInput.focus(); searchInput.select(); }
+          break;
+        case "b":
+        case "B":
+          event.preventDefault();
+          setSidebarHidden(!appShell.classList.contains("is-sidebar-hidden"));
+          break;
+        case "s":
+        case "S":
+          event.preventDefault();
+          clickIf("source-view-toggle");
+          break;
+        case "e":
+        case "E":
+          event.preventDefault();
+          clickIf("edit-toggle");
+          break;
+        case "t":
+        case "T": {
+          // Back to top — reuse the floating button's mobile-aware scroll.
+          const topBtn = document.querySelector(".back-to-top");
+          if (topBtn) { event.preventDefault(); topBtn.click(); }
+          break;
+        }
+      }
+    });
+  })();
+
   const tocCollapse = document.getElementById("toc-collapse");
   const tocShow = document.getElementById("toc-show");
   const tocHiddenKey = "markwright-toc-hidden";

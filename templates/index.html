@@ -16,6 +16,7 @@
             <div class="settings-wrap">
               <button class="icon-button" id="settings-toggle" type="button" title="{{ _('Appearance settings') }}" aria-label="{{ _('Appearance settings') }}" aria-expanded="false" aria-controls="settings-popover">⚙</button>
             </div>
+            <button class="icon-button" id="shortcuts-toggle" type="button" title="{{ _('Keyboard shortcuts (?)') }}" aria-label="{{ _('Keyboard shortcuts') }}" aria-haspopup="dialog" aria-controls="shortcuts-modal">⌨</button>
             <button class="icon-button sidebar-collapse" id="sidebar-collapse" type="button" title="{{ _('Hide sidebar') }}" aria-label="{{ _('Hide sidebar') }}" aria-controls="sidebar" aria-expanded="true">«</button>
           </div>
           <div class="settings-popover" id="settings-popover" hidden>
@@ -508,6 +509,66 @@
         </div>
       </div>
       <div class="diagram-overlay-stage" id="diagram-overlay-stage"></div>
+    </div>
+
+    <div class="preset-modal shortcuts-modal" id="shortcuts-modal" hidden role="dialog" aria-modal="true" aria-label="{{ _('Keyboard shortcuts') }}">
+      <div class="preset-modal-card shortcuts-card">
+        <div class="preset-modal-head">
+          <p class="preset-modal-title">{{ _('Keyboard shortcuts') }}</p>
+          <button class="icon-button" id="shortcuts-close" type="button" title="{{ _('Close (Esc)') }}" aria-label="{{ _('Close') }}">✕</button>
+        </div>
+        <div class="shortcuts-body">
+          <section class="shortcuts-group">
+            <h3 class="shortcuts-group-title">{{ _('General') }}</h3>
+            <dl class="shortcuts-list">
+              <div class="shortcut-row"><dt><kbd>?</kbd></dt><dd>{{ _('Show this help') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>/</kbd></dt><dd>{{ _('Search files') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>b</kbd></dt><dd>{{ _('Toggle sidebar') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>t</kbd></dt><dd>{{ _('Back to top') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>f</kbd></dt><dd>{{ _('Toggle focus reading mode') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Esc</kbd></dt><dd>{{ _('Close dialogs / exit modes') }}</dd></div>
+            </dl>
+          </section>
+          <section class="shortcuts-group">
+            <h3 class="shortcuts-group-title">{{ _('Document') }}</h3>
+            <dl class="shortcuts-list">
+              <div class="shortcut-row"><dt><kbd>s</kbd></dt><dd>{{ _('Toggle source view') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>e</kbd></dt><dd>{{ _('Edit document (when editable)') }}</dd></div>
+            </dl>
+          </section>
+          <section class="shortcuts-group">
+            <h3 class="shortcuts-group-title">{{ _('Focus reading mode') }}</h3>
+            <dl class="shortcuts-list">
+              <div class="shortcut-row"><dt><kbd>Space</kbd></dt><dd>{{ _('Page down') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Shift</kbd> + <kbd>Space</kbd></dt><dd>{{ _('Page up') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>PageDown</kbd> / <kbd>PageUp</kbd></dt><dd>{{ _('Page down / up') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>j</kbd> / <kbd>k</kbd></dt><dd>{{ _('Scroll down / up') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Esc</kbd></dt><dd>{{ _('Exit focus mode') }}</dd></div>
+            </dl>
+          </section>
+          <section class="shortcuts-group">
+            <h3 class="shortcuts-group-title">{{ _('Editor') }}</h3>
+            <dl class="shortcuts-list">
+              <div class="shortcut-row"><dt><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>S</kbd></dt><dd>{{ _('Save') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>B</kbd></dt><dd>{{ _('Bold') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>I</kbd></dt><dd>{{ _('Italic') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd></dt><dd>{{ _('Insert link') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd></dt><dd>{{ _('Find') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>G</kbd></dt><dd>{{ _('Find next') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Shift</kbd> + <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>G</kbd></dt><dd>{{ _('Find previous') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Esc</kbd></dt><dd>{{ _('Exit editor') }}</dd></div>
+            </dl>
+          </section>
+          <section class="shortcuts-group">
+            <h3 class="shortcuts-group-title">{{ _('Diagram viewer') }}</h3>
+            <dl class="shortcuts-list">
+              <div class="shortcut-row"><dt><kbd>+</kbd> / <kbd>-</kbd></dt><dd>{{ _('Zoom in / out') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>0</kbd></dt><dd>{{ _('Reset zoom') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Esc</kbd></dt><dd>{{ _('Close') }}</dd></div>
+            </dl>
+          </section>
+        </div>
+      </div>
     </div>
 
     <script>
