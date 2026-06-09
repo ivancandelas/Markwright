@@ -782,6 +782,27 @@ DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.docu
 
 # CDN module the viewer itself loads mermaid from — reused for headless render.
 _MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
+
+
+def _mix_hex(a, b, t):
+    """Linearly blend two 6-digit hex colors (t=0 -> a, t=1 -> b). Mirror of the
+    viewer's `mixHex` in static/js/app.js."""
+    na, nb = int(a.lstrip("#"), 16), int(b.lstrip("#"), 16)
+    lerp = lambda x, y: round(x + (y - x) * t)  # noqa: E731
+    r = lerp((na >> 16) & 255, (nb >> 16) & 255)
+    g = lerp((na >> 8) & 255, (nb >> 8) & 255)
+    bch = lerp(na & 255, nb & 255)
+    return f"#{(r << 16) | (g << 8) | bch:06x}"
+
+
+# Subgraph (cluster) tint for the DOCX raster. The viewer derives this per active
+# palette; DOCX always renders on a white page, so we mirror the light theme's
+# values (--bg #f6f8fa, --accent #0969da, --border #d8dee4) and override just the
+# cluster variables on mermaid's default theme so everything else stays default.
+_MERMAID_THEME_VARS = {
+    "clusterBkg": _mix_hex("#f6f8fa", "#0969da", 0.1),
+    "clusterBorder": _mix_hex("#d8dee4", "#0969da", 0.5),
+}
 # Cap a diagram's printed width to the body of an A4/Letter page (≈ 6.3in), and
 # scale diagrams up from their natural size so they're legible on the page.
 _MERMAID_MAX_WIDTH_IN = 6.3
@@ -845,9 +866,9 @@ def _render_mermaid_pngs(sources):
                 page = browser.new_page(device_scale_factor=_MERMAID_DEVICE_SCALE)
                 page.set_content('<div id="c" style="background:#fff;"></div>')
                 flags = page.evaluate(
-                    """async ([cdn, sources]) => {
+                    """async ([cdn, sources, themeVars]) => {
                         const mermaid = (await import(cdn)).default;
-                        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+                        mermaid.initialize({ startOnLoad: false, theme: 'default', themeVariables: themeVars });
                         const c = document.getElementById('c');
                         const out = [];
                         for (let i = 0; i < sources.length; i++) {
@@ -866,7 +887,7 @@ def _render_mermaid_pngs(sources):
                         }
                         return out;
                     }""",
-                    [_MERMAID_CDN, sources],
+                    [_MERMAID_CDN, sources, _MERMAID_THEME_VARS],
                 )
                 for i, good in enumerate(flags):
                     if not good:
