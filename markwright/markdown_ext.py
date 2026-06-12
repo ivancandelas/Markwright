@@ -170,24 +170,38 @@ class MarkdownInHtmlAutoAttrPreprocessor(Preprocessor):
     # README-style files with badges or content inside <div>/<details>
     # still have their inner markdown parsed. Skips indented lines to
     # avoid touching <tag> occurrences inside indented code blocks.
+    #
+    # Span-mode wrappers (div/center/header/...) are *upgraded* to block
+    # mode when the opening tag sits alone on its line and is followed by a
+    # blank line. This mirrors GitHub: `<div align="center">\n\n# Title`
+    # parses the inner markdown as blocks (so the heading renders), while
+    # `<div>\n    <img>` (no blank line, content hugging the tag) stays span
+    # so 4-space-indented inline HTML isn't turned into a code block.
 
     def run(self, lines):
         out = []
-        for line in lines:
+        for i, line in enumerate(lines):
             if line.startswith("    ") or line.startswith("\t"):
                 out.append(line)
                 continue
-            out.append(HTML_BLOCK_OPEN_RE.sub(self._inject, line))
+            next_blank = i + 1 >= len(lines) or not lines[i + 1].strip()
+            out.append(
+                HTML_BLOCK_OPEN_RE.sub(
+                    lambda match: self._inject(match, line, next_blank), line
+                )
+            )
         return out
 
     @staticmethod
-    def _inject(match):
+    def _inject(match, line, next_blank):
         mode = HTML_BLOCK_TAG_MODES.get(match.group("tag").lower())
         if mode is None:
             return match.group(0)
         attrs = match.group("attrs")
         if re.search(r"\bmarkdown\s*=", attrs):
             return match.group(0)
+        if mode == "span" and next_blank and line.strip() == match.group(0):
+            mode = "1"
         return f"<{match.group('tag')}{attrs} markdown=\"{mode}\"{match.group('close')}"
 
 
