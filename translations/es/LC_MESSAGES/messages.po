@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-15 08:57-0600\n"
+"POT-Creation-Date: 2026-06-15 16:14-0600\n"
 "PO-Revision-Date: 2026-06-02 17:30-0600\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -18,106 +18,114 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: app.py:216
+#: app.py:217
 msgid "source is required"
 msgstr "Se requiere un origen"
 
-#: app.py:235
+#: app.py:236
 msgid "git command timed out"
 msgstr "El comando git agotó el tiempo de espera"
 
-#: app.py:237
+#: app.py:238
 msgid "git is not installed or not on PATH"
 msgstr "git no está instalado o no está en el PATH"
 
-#: app.py:258
+#: app.py:259
 msgid "path is required"
 msgstr "Se requiere una ruta"
 
-#: app.py:266
+#: app.py:267
 msgid "Cannot remove the active source"
 msgstr "No se puede quitar el origen activo"
 
-#: app.py:271
+#: app.py:272
 msgid "Not found in recents"
 msgstr "No se encontró en los recientes"
 
-#: app.py:314 app.py:362 app.py:388 app.py:418 app.py:451
+#: app.py:315 app.py:341 app.py:394 app.py:420 app.py:450 app.py:483
 msgid "This source is read-only"
 msgstr "Este origen es de solo lectura"
 
-#: app.py:319 app.py:496
+#: app.py:320 app.py:528
 msgid "file and content are required"
 msgstr "se requieren el archivo y el contenido"
 
-#: app.py:321 app.py:324 app.py:392 app.py:395 app.py:422 app.py:425 app.py:454
-#: app.py:498 app.py:513
+#: app.py:322 app.py:325 app.py:350 app.py:353 app.py:424 app.py:427 app.py:454
+#: app.py:457 app.py:486 app.py:530 app.py:545
 msgid "not found"
 msgstr "no encontrado"
 
-#: app.py:345
+#: app.py:348
+msgid "file, index and checked are required"
+msgstr "se requieren el archivo, el índice y el estado"
+
+#: app.py:358
+msgid "task checkbox not found"
+msgstr "casilla de tarea no encontrada"
+
+#: app.py:377
 msgid "A file name is required"
 msgstr "Se requiere un nombre de archivo"
 
-#: app.py:352
+#: app.py:384
 msgid "Use a .md or .rst file extension"
 msgstr "Usa una extensión de archivo .md o .rst"
 
-#: app.py:370 app.py:404
+#: app.py:402 app.py:436
 msgid "A file with that name already exists"
 msgstr "Ya existe un archivo con ese nombre"
 
-#: app.py:457
+#: app.py:489
 msgid "No image provided"
 msgstr "No se proporcionó ninguna imagen"
 
-#: app.py:460 app.py:947
+#: app.py:492 app.py:979
 #, python-format
 msgid "Unsupported image format: %(ext)s"
 msgstr "Formato de imagen no soportado: %(ext)s"
 
-#: app.py:460 app.py:931 app.py:947
+#: app.py:492 app.py:963 app.py:979
 msgid "(no extension)"
 msgstr "(sin extensión)"
 
-#: app.py:463
+#: app.py:495
 msgid "The image exceeds the 10 MB limit"
 msgstr "La imagen supera el límite de 10 MB"
 
-#: app.py:511
+#: app.py:543
 msgid "file is required"
 msgstr "Se requiere un archivo"
 
-#: app.py:573
+#: app.py:605
 msgid "Playwright is not installed. Run: uv pip install playwright"
 msgstr "Playwright no está instalado. Ejecuta: uv pip install playwright"
 
-#: app.py:732 app.py:838
+#: app.py:764 app.py:870
 msgid "Pandoc is not installed. Install it (e.g. `apt install pandoc`) to export to Word."
 msgstr "Pandoc no está instalado. Instálalo (p. ej. `apt install pandoc`) para exportar a Word."
 
-#: app.py:844
+#: app.py:876
 msgid "Could not generate the DOCX. See the server logs for details."
 msgstr "No se pudo generar el DOCX. Consulta los registros del servidor para más detalles."
 
-#: app.py:869 static/js/app.js:2858
+#: app.py:901 static/js/app.js:2858
 msgid "Name is required"
 msgstr "El nombre es obligatorio"
 
-#: app.py:931
+#: app.py:963
 #, python-format
 msgid "Unsupported logo format: %(ext)s"
 msgstr "Formato de logo no soportado: %(ext)s"
 
-#: app.py:934
+#: app.py:966
 msgid "The logo exceeds the 2 MB limit"
 msgstr "El logo supera el límite de 2 MB"
 
-#: app.py:950
+#: app.py:982
 msgid "The cover image exceeds the 2 MB limit"
 msgstr "La imagen de portada supera el límite de 2 MB"
 
-#: app.py:969 app.py:999
+#: app.py:1001 app.py:1031
 msgid "Not found"
 msgstr "No encontrado"
 
@@ -184,7 +192,7 @@ msgstr "%(words)s palabras · ~%(min)s min de lectura"
 msgid "Copy link to this section"
 msgstr "Copiar enlace a esta sección"
 
-#: static/js/app.js:683 static/js/app.js:684 templates/index.html:527
+#: static/js/app.js:683 static/js/app.js:684 templates/index.html:528
 msgid "Back to top"
 msgstr "Volver arriba"
 
@@ -258,7 +266,7 @@ msgstr "Quitar"
 msgid "✓ Bookmarked"
 msgstr "✓ Marcado"
 
-#: static/js/app.js:1085 templates/index.html:243
+#: static/js/app.js:1085 templates/index.html:244
 msgid "+ Bookmark this spot"
 msgstr "+ Marcar esta posición"
 
@@ -307,11 +315,11 @@ msgstr "Quitado — recargando…"
 msgid "View rendered"
 msgstr "Ver renderizado"
 
-#: static/js/app.js:1610 templates/index.html:235
+#: static/js/app.js:1610 templates/index.html:236
 msgid "View source"
 msgstr "Ver código fuente"
 
-#: static/js/app.js:1726 templates/index.html:552
+#: static/js/app.js:1726 templates/index.html:553
 msgid "Save"
 msgstr "Guardar"
 
@@ -323,7 +331,7 @@ msgstr "Guardar (Ctrl+S)"
 msgid "Exit"
 msgstr "Salir"
 
-#: static/js/app.js:1735 templates/index.html:559
+#: static/js/app.js:1735 templates/index.html:560
 msgid "Exit editor"
 msgstr "Salir del editor"
 
@@ -430,7 +438,7 @@ msgstr "Renombrar"
 msgid "Delete \"%(name)s\"? This cannot be undone."
 msgstr "¿Eliminar «%(name)s»? Esta acción no se puede deshacer."
 
-#: static/js/app.js:2344 templates/index.html:480
+#: static/js/app.js:2344 templates/index.html:481
 msgid "Delete"
 msgstr "Eliminar"
 
@@ -474,6 +482,14 @@ msgstr "¿Eliminar el ajuste «%(name)s»?"
 msgid "Remove \"%(label)s\" from recents and delete the cached clone?"
 msgstr "¿Quitar «%(label)s» de los recientes y eliminar el clon en caché?"
 
+#: static/js/app.js:3137
+msgid "Auto-save checkboxes: on"
+msgstr "Guardado automático de casillas: activado"
+
+#: static/js/app.js:3138
+msgid "Auto-save checkboxes: off (changes won’t be saved)"
+msgstr "Guardado automático de casillas: desactivado (los cambios no se guardarán)"
+
 #: templates/index.html:17
 msgid "Appearance settings"
 msgstr "Ajustes de apariencia"
@@ -482,7 +498,7 @@ msgstr "Ajustes de apariencia"
 msgid "Keyboard shortcuts (?)"
 msgstr "Atajos de teclado (?)"
 
-#: templates/index.html:19 templates/index.html:514 templates/index.html:517
+#: templates/index.html:19 templates/index.html:515 templates/index.html:518
 msgid "Keyboard shortcuts"
 msgstr "Atajos de teclado"
 
@@ -692,432 +708,436 @@ msgstr "Cancelar"
 msgid "Edit source"
 msgstr "Editar el código fuente"
 
-#: templates/index.html:235 templates/index.html:535
+#: templates/index.html:234
+msgid "Auto-save checkboxes"
+msgstr "Guardar casillas automáticamente"
+
+#: templates/index.html:236 templates/index.html:536
 msgid "Toggle source view"
 msgstr "Alternar la vista de código"
 
-#: templates/index.html:236
+#: templates/index.html:237
 msgid "Focus reading (F)"
 msgstr "Lectura enfocada (F)"
 
-#: templates/index.html:236
+#: templates/index.html:237
 msgid "Focus reading"
 msgstr "Lectura enfocada"
 
-#: templates/index.html:237
+#: templates/index.html:238
 msgid "Show/hide frontmatter panel"
 msgstr "Mostrar/ocultar el panel de frontmatter"
 
-#: templates/index.html:237
+#: templates/index.html:238
 msgid "Toggle frontmatter panel"
 msgstr "Alternar el panel de frontmatter"
 
-#: templates/index.html:239 templates/index.html:241
+#: templates/index.html:240 templates/index.html:242
 msgid "Bookmarks"
 msgstr "Marcadores"
 
-#: templates/index.html:244 templates/index.html:317
+#: templates/index.html:245 templates/index.html:318
 msgid "On this page"
 msgstr "En esta página"
 
-#: templates/index.html:246
+#: templates/index.html:247
 msgid "No saved positions on this page yet."
 msgstr "Aún no hay posiciones guardadas en esta página."
 
-#: templates/index.html:250
+#: templates/index.html:251
 msgid "Export as PDF"
 msgstr "Exportar como PDF"
 
-#: templates/index.html:252
+#: templates/index.html:253
 msgid "Export PDF"
 msgstr "Exportar PDF"
 
-#: templates/index.html:253
+#: templates/index.html:254
 msgid "Preset"
 msgstr "Ajuste"
 
-#: templates/index.html:256
+#: templates/index.html:257
 msgid "Custom (no preset)"
 msgstr "Personalizado (sin ajuste)"
 
-#: templates/index.html:258
+#: templates/index.html:259
 msgid "Manage presets"
 msgstr "Gestionar ajustes"
 
-#: templates/index.html:262 templates/index.html:345
+#: templates/index.html:263 templates/index.html:346
 msgid "Header"
 msgstr "Encabezado"
 
-#: templates/index.html:264 templates/index.html:272 templates/index.html:347
-#: templates/index.html:355 templates/index.html:368 templates/index.html:474
+#: templates/index.html:265 templates/index.html:273 templates/index.html:348
+#: templates/index.html:356 templates/index.html:369 templates/index.html:475
 msgid "Left"
 msgstr "Izquierda"
 
-#: templates/index.html:265 templates/index.html:273 templates/index.html:348
-#: templates/index.html:356 templates/index.html:369
+#: templates/index.html:266 templates/index.html:274 templates/index.html:349
+#: templates/index.html:357 templates/index.html:370
 msgid "Center"
 msgstr "Centro"
 
-#: templates/index.html:266 templates/index.html:274 templates/index.html:349
-#: templates/index.html:357 templates/index.html:370 templates/index.html:475
+#: templates/index.html:267 templates/index.html:275 templates/index.html:350
+#: templates/index.html:358 templates/index.html:371 templates/index.html:476
 msgid "Right"
 msgstr "Derecha"
 
-#: templates/index.html:270 templates/index.html:353
+#: templates/index.html:271 templates/index.html:354
 msgid "Footer"
 msgstr "Pie de página"
 
-#: templates/index.html:279
+#: templates/index.html:280
 msgid "Include contents page"
 msgstr "Incluir página de contenido"
 
-#: templates/index.html:283
+#: templates/index.html:284
 msgid "Include cover page"
 msgstr "Incluir página de portada"
 
-#: templates/index.html:283
+#: templates/index.html:284
 msgid "(needs a preset)"
 msgstr "(requiere un ajuste)"
 
-#: templates/index.html:287
+#: templates/index.html:288
 msgid "Include frontmatter panel"
 msgstr "Incluir el panel de frontmatter"
 
-#: templates/index.html:291
+#: templates/index.html:292
 msgid "Download PDF"
 msgstr "Descargar PDF"
 
-#: templates/index.html:292
+#: templates/index.html:293
 msgid "Export to Word (.docx) — uses the preset’s contents-page option; header/footer, cover and margins are PDF-only"
 msgstr "Exportar a Word (.docx) — usa la opción de página de contenido del ajuste; el encabezado/pie, la portada y los márgenes son solo para PDF"
 
-#: templates/index.html:292
+#: templates/index.html:293
 msgid "Word (.docx)"
 msgstr "Word (.docx)"
 
-#: templates/index.html:303
+#: templates/index.html:304
 msgid "Table of contents"
 msgstr "Tabla de contenido"
 
-#: templates/index.html:304
+#: templates/index.html:305
 msgid "Contents"
 msgstr "Contenido"
 
-#: templates/index.html:310
+#: templates/index.html:311
 msgid "Add a <code>.md</code> file to this directory, then refresh the browser."
 msgstr "Añade un archivo <code>.md</code> a este directorio y luego recarga el navegador."
 
-#: templates/index.html:318
+#: templates/index.html:319
 msgid "Hide table of contents"
 msgstr "Ocultar la tabla de contenido"
 
-#: templates/index.html:322
+#: templates/index.html:323
 msgid "Show table of contents"
 msgstr "Mostrar la tabla de contenido"
 
-#: templates/index.html:328 templates/index.html:331
+#: templates/index.html:329 templates/index.html:332
 msgid "PDF presets"
 msgstr "Ajustes de PDF"
 
-#: templates/index.html:332 templates/index.html:489 templates/index.html:518
+#: templates/index.html:333 templates/index.html:490 templates/index.html:519
 msgid "Close (Esc)"
 msgstr "Cerrar (Esc)"
 
-#: templates/index.html:332 templates/index.html:489 templates/index.html:518
-#: templates/index.html:567
+#: templates/index.html:333 templates/index.html:490 templates/index.html:519
+#: templates/index.html:568
 msgid "Close"
 msgstr "Cerrar"
 
-#: templates/index.html:337
+#: templates/index.html:338
 msgid "+ New preset"
 msgstr "+ Nuevo ajuste"
 
-#: templates/index.html:341
+#: templates/index.html:342
 msgid "Name"
 msgstr "Nombre"
 
-#: templates/index.html:361
+#: templates/index.html:362
 msgid "Download file name"
 msgstr "Nombre del archivo descargado"
 
-#: templates/index.html:366
+#: templates/index.html:367
 msgid "Logo position"
 msgstr "Posición del logo"
 
-#: templates/index.html:373
+#: templates/index.html:374
 msgid "Logo image"
 msgstr "Imagen del logo"
 
-#: templates/index.html:378
+#: templates/index.html:379
 msgid "Logo preview"
 msgstr "Vista previa del logo"
 
-#: templates/index.html:379
+#: templates/index.html:380
 msgid "Remove logo"
 msgstr "Quitar logo"
 
-#: templates/index.html:382
+#: templates/index.html:383
 msgid "Page size"
 msgstr "Tamaño de página"
 
-#: templates/index.html:387
+#: templates/index.html:388
 msgid "Tabloid / Ledger (11×17)"
 msgstr "Tabloide / Ledger (11×17)"
 
-#: templates/index.html:390
+#: templates/index.html:391
 msgid "Orientation"
 msgstr "Orientación"
 
-#: templates/index.html:392
+#: templates/index.html:393
 msgid "Portrait"
 msgstr "Vertical"
 
-#: templates/index.html:393
+#: templates/index.html:394
 msgid "Landscape"
 msgstr "Horizontal"
 
-#: templates/index.html:398
+#: templates/index.html:399
 msgid "Body font"
 msgstr "Fuente del cuerpo"
 
-#: templates/index.html:401
+#: templates/index.html:402
 msgid "Body font size (percent)"
 msgstr "Tamaño de fuente del cuerpo (porcentaje)"
 
-#: templates/index.html:407
+#: templates/index.html:408
 msgid "Include contents page (clickable, before the document)"
 msgstr "Incluir página de contenido (con enlaces, antes del documento)"
 
-#: templates/index.html:411
+#: templates/index.html:412
 msgid "Include frontmatter panel in the PDF body"
 msgstr "Incluir el panel de frontmatter en el cuerpo del PDF"
 
-#: templates/index.html:414
+#: templates/index.html:415
 msgid "Cover page"
 msgstr "Página de portada"
 
-#: templates/index.html:417
+#: templates/index.html:418
 msgid "Add a cover page"
 msgstr "Añadir una página de portada"
 
-#: templates/index.html:420
+#: templates/index.html:421
 msgid "Title"
 msgstr "Título"
 
-#: templates/index.html:423
+#: templates/index.html:424
 msgid "Subtitle"
 msgstr "Subtítulo"
 
-#: templates/index.html:424
+#: templates/index.html:425
 msgid "e.g. Technical Specification"
 msgstr "p. ej. Especificación técnica"
 
-#: templates/index.html:426
+#: templates/index.html:427
 msgid "Metadata rows (one <code>Label: value</code> per line)"
 msgstr "Filas de metadatos (un <code>Etiqueta: valor</code> por línea)"
 
-#: templates/index.html:429
+#: templates/index.html:430
 msgid "Footer line"
 msgstr "Línea de pie de página"
 
-#: templates/index.html:434
+#: templates/index.html:435
 msgid "Cover image"
 msgstr "Imagen de portada"
 
-#: templates/index.html:436
+#: templates/index.html:437
 msgid "None"
 msgstr "Ninguna"
 
-#: templates/index.html:437
+#: templates/index.html:438
 msgid "Use preset logo"
 msgstr "Usar el logo del ajuste"
 
-#: templates/index.html:438
+#: templates/index.html:439
 msgid "Upload an image"
 msgstr "Subir una imagen"
 
-#: templates/index.html:443
+#: templates/index.html:444
 msgid "Blank page after cover"
 msgstr "Página en blanco tras la portada"
 
-#: templates/index.html:447
+#: templates/index.html:448
 msgid "Image file"
 msgstr "Archivo de imagen"
 
-#: templates/index.html:451
+#: templates/index.html:452
 msgid "Cover image preview"
 msgstr "Vista previa de la imagen de portada"
 
-#: templates/index.html:452
+#: templates/index.html:453
 msgid "Remove cover image"
 msgstr "Quitar la imagen de portada"
 
-#: templates/index.html:458
+#: templates/index.html:459
 msgid "Default values (fallback)"
 msgstr "Valores predeterminados (reserva)"
 
-#: templates/index.html:461
+#: templates/index.html:462
 msgid "Use these defaults when the document has no frontmatter (or is missing a key)"
 msgstr "Usar estos valores cuando el documento no tiene frontmatter (o le falta una clave)"
 
-#: templates/index.html:464
+#: templates/index.html:465
 msgid "Fallback values (one <code>key: value</code> per line)"
 msgstr "Valores de reserva (un <code>clave: valor</code> por línea)"
 
-#: templates/index.html:471
+#: templates/index.html:472
 msgid "Margins (mm)"
 msgstr "Márgenes (mm)"
 
-#: templates/index.html:472
+#: templates/index.html:473
 msgid "Top"
 msgstr "Superior"
 
-#: templates/index.html:473
+#: templates/index.html:474
 msgid "Bottom"
 msgstr "Inferior"
 
-#: templates/index.html:478
+#: templates/index.html:479
 msgid "Save preset"
 msgstr "Guardar ajuste"
 
-#: templates/index.html:479
+#: templates/index.html:480
 msgid "Duplicate"
 msgstr "Duplicar"
 
-#: templates/index.html:488 templates/index.html:563
+#: templates/index.html:489 templates/index.html:564
 msgid "Diagram viewer"
 msgstr "Visor de diagramas"
 
-#: templates/index.html:491
+#: templates/index.html:492
 msgid "Zoom controls"
 msgstr "Controles de zoom"
 
-#: templates/index.html:492 templates/index.html:497 templates/index.html:499
-#: templates/index.html:500 templates/index.html:501 templates/index.html:502
+#: templates/index.html:493 templates/index.html:498 templates/index.html:500
+#: templates/index.html:501 templates/index.html:502 templates/index.html:503
 msgid "Zoom"
 msgstr "Zoom"
 
-#: templates/index.html:493
+#: templates/index.html:494
 msgid "Zoom out"
 msgstr "Alejar"
 
-#: templates/index.html:494
+#: templates/index.html:495
 msgid "Zoom level"
 msgstr "Nivel de zoom"
 
-#: templates/index.html:495
+#: templates/index.html:496
 msgid "Zoom in"
 msgstr "Acercar"
 
-#: templates/index.html:498
+#: templates/index.html:499
 msgid "Reset zoom (0)"
 msgstr "Restablecer zoom (0)"
 
-#: templates/index.html:498 templates/index.html:566
+#: templates/index.html:499 templates/index.html:567
 msgid "Reset zoom"
 msgstr "Restablecer zoom"
 
-#: templates/index.html:504 templates/index.html:507
+#: templates/index.html:505 templates/index.html:508
 msgid "Backdrop opacity"
 msgstr "Opacidad del fondo"
 
-#: templates/index.html:505
+#: templates/index.html:506
 msgid "Opacity"
 msgstr "Opacidad"
 
-#: templates/index.html:506
+#: templates/index.html:507
 msgid "Decrease backdrop opacity"
 msgstr "Reducir la opacidad del fondo"
 
-#: templates/index.html:508
+#: templates/index.html:509
 msgid "Increase backdrop opacity"
 msgstr "Aumentar la opacidad del fondo"
 
-#: templates/index.html:522
+#: templates/index.html:523
 msgid "General"
 msgstr "General"
 
-#: templates/index.html:524
+#: templates/index.html:525
 msgid "Show this help"
 msgstr "Mostrar esta ayuda"
 
-#: templates/index.html:525
+#: templates/index.html:526
 msgid "Search files"
 msgstr "Buscar archivos"
 
-#: templates/index.html:526
+#: templates/index.html:527
 msgid "Toggle sidebar"
 msgstr "Mostrar/ocultar la barra lateral"
 
-#: templates/index.html:528
+#: templates/index.html:529
 msgid "Toggle focus reading mode"
 msgstr "Activar/desactivar el modo de lectura enfocada"
 
-#: templates/index.html:529
+#: templates/index.html:530
 msgid "Close dialogs / exit modes"
 msgstr "Cerrar diálogos / salir de los modos"
 
-#: templates/index.html:533
+#: templates/index.html:534
 msgid "Document"
 msgstr "Documento"
 
-#: templates/index.html:536
+#: templates/index.html:537
 msgid "Edit document (when editable)"
 msgstr "Editar el documento (cuando es editable)"
 
-#: templates/index.html:540
+#: templates/index.html:541
 msgid "Focus reading mode"
 msgstr "Modo de lectura enfocada"
 
-#: templates/index.html:542
+#: templates/index.html:543
 msgid "Page down"
 msgstr "Avanzar una página"
 
-#: templates/index.html:543
+#: templates/index.html:544
 msgid "Page up"
 msgstr "Retroceder una página"
 
-#: templates/index.html:544
+#: templates/index.html:545
 msgid "Page down / up"
 msgstr "Avanzar / retroceder una página"
 
-#: templates/index.html:545
+#: templates/index.html:546
 msgid "Scroll down / up"
 msgstr "Desplazar hacia abajo / arriba"
 
-#: templates/index.html:546
+#: templates/index.html:547
 msgid "Exit focus mode"
 msgstr "Salir del modo enfocado"
 
-#: templates/index.html:550
+#: templates/index.html:551
 msgid "Editor"
 msgstr "Editor"
 
-#: templates/index.html:553
+#: templates/index.html:554
 msgid "Bold"
 msgstr "Negrita"
 
-#: templates/index.html:554
+#: templates/index.html:555
 msgid "Italic"
 msgstr "Cursiva"
 
-#: templates/index.html:555
+#: templates/index.html:556
 msgid "Insert link"
 msgstr "Insertar enlace"
 
-#: templates/index.html:556
+#: templates/index.html:557
 msgid "Find"
 msgstr "Buscar"
 
-#: templates/index.html:557
+#: templates/index.html:558
 msgid "Find next"
 msgstr "Buscar siguiente"
 
-#: templates/index.html:558
+#: templates/index.html:559
 msgid "Find previous"
 msgstr "Buscar anterior"
 
-#: templates/index.html:565
+#: templates/index.html:566
 msgid "Zoom in / out"
 msgstr "Acercar / alejar"
 

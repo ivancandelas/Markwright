@@ -26,6 +26,7 @@ from markwright.files import (
 )
 from markwright.frontmatter import extract_frontmatter
 from markwright.links import is_local_reference, resolve_reference
+from markwright.tasks import toggle_task_marker
 from markwright.render import (
     render_markdown,
     render_markdown_source,
@@ -324,6 +325,37 @@ def api_save():
         return jsonify({"error": _("not found")}), 404
     try:
         target.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        return jsonify({"error": str(exc)}), 500
+    return jsonify({"ok": True, "mtime": target.stat().st_mtime})
+
+
+@app.route("/api/toggle-task", methods=["POST"])
+def api_toggle_task():
+    """Flip a single task-list checkbox in the source file and save it. Same
+    local-only + scan-set + safe_path guards as /api/save; the body sends the
+    checkbox's document-order ``index`` (its ``data-task-index``) and the desired
+    ``checked`` state. Nothing is re-rendered — the client already toggled the
+    box optimistically; this just persists the matching ``[ ]``↔``[x]``."""
+    if not is_local_source():
+        return jsonify({"error": _("This source is read-only")}), 403
+    payload = request.get_json(silent=True) or {}
+    bare = (payload.get("file") or "").strip().split("#", 1)[0]
+    index = payload.get("index")
+    checked = payload.get("checked")
+    # bool is a subclass of int, so reject it as an index explicitly.
+    if not bare or not isinstance(index, int) or isinstance(index, bool) or not isinstance(checked, bool):
+        return jsonify({"error": _("file, index and checked are required")}), 400
+    if bare not in scan_markdown_files():
+        return jsonify({"error": _("not found")}), 404
+    target = safe_path(bare)
+    if not target.is_file() or target.suffix.lower() == ".rst":
+        return jsonify({"error": _("not found")}), 404
+    try:
+        updated = toggle_task_marker(target.read_text(encoding="utf-8"), index, checked)
+        target.write_text(updated, encoding="utf-8")
+    except IndexError:
+        return jsonify({"error": _("task checkbox not found")}), 409
     except OSError as exc:
         return jsonify({"error": str(exc)}), 500
     return jsonify({"ok": True, "mtime": target.stat().st_mtime})

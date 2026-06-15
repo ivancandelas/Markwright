@@ -231,6 +231,7 @@
               {% if selected %}
                 {% if editable %}
                   <button class="icon-button edit-toggle" id="edit-toggle" type="button" title="{{ _('Edit') }}" aria-label="{{ _('Edit source') }}" aria-pressed="false" data-file="{{ selected }}">✎</button>
+                  <button class="icon-button task-autosave-toggle" id="task-autosave-toggle" type="button" hidden title="{{ _('Auto-save checkboxes') }}" aria-label="{{ _('Auto-save checkboxes') }}" aria-pressed="true">☑</button>
                 {% endif %}
                 <button class="icon-button source-view-toggle" id="source-view-toggle" type="button" title="{{ _('View source') }}" aria-label="{{ _('Toggle source view') }}" aria-pressed="false" data-file="{{ selected }}">&lt;/&gt;</button>
                 <button class="icon-button focus-read-toggle" id="focus-read-toggle" type="button" title="{{ _('Focus reading (F)') }}" aria-label="{{ _('Focus reading') }}" aria-pressed="false">⤢</button>
@@ -576,6 +577,9 @@
       window.I18N = {{ js_i18n|tojson }};
       // Active content root — scopes editor draft autosave keys per source.
       window.MARKWRIGHT_ROOT = {{ (content_dir|string)|tojson }};
+      // Whether the source is writable (local dir, not a read-only git clone).
+      // Gates interactive/auto-saving task-list checkboxes.
+      window.MARKWRIGHT_EDITABLE = {{ editable|tojson }};
     </script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";

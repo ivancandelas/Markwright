@@ -99,6 +99,13 @@ ES = {
     "Saved — reloading…": "Guardado — recargando…",
     "This source is read-only": "Este origen es de solo lectura",
     "file and content are required": "se requieren el archivo y el contenido",
+    "file, index and checked are required":
+        "se requieren el archivo, el índice y el estado",
+    "task checkbox not found": "casilla de tarea no encontrada",
+    "Auto-save checkboxes": "Guardar casillas automáticamente",
+    "Auto-save checkboxes: on": "Guardado automático de casillas: activado",
+    "Auto-save checkboxes: off (changes won’t be saved)":
+        "Guardado automático de casillas: desactivado (los cambios no se guardarán)",
     "Bold (Ctrl+B)": "Negrita (Ctrl+B)",
     "Italic (Ctrl+I)": "Cursiva (Ctrl+I)",
     "Inline code": "Código en línea",

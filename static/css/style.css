@@ -1207,10 +1207,16 @@ a {
 }
 
 .source-view-toggle[aria-pressed="true"],
-.edit-toggle[aria-pressed="true"] {
+.edit-toggle[aria-pressed="true"],
+.task-autosave-toggle[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* Auto-save off: a muted, "disarmed" look so it's clear clicks won't persist. */
+.task-autosave-toggle[aria-pressed="false"] {
+  opacity: 0.6;
 }
 
 /* The first action absorbs the row's free space so the action group sits at the
@@ -2645,6 +2651,30 @@ body.editor-fs-lock {
 
 .markdown-body li + li {
   margin-top: 0.25em;
+}
+
+/* GFM task lists: drop the bullet and hang the checkbox into the gutter. */
+.markdown-body li.task-list-item {
+  list-style: none;
+}
+
+.markdown-body .task-list-item-checkbox {
+  margin: 0 0.45em 0 -1.35em;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.markdown-body .task-list-item-checkbox:disabled {
+  cursor: default;
+}
+
+.markdown-body .task-list-item-checkbox.task-saving {
+  opacity: 0.5;
+}
+
+.markdown-body .task-list-item-checkbox.task-error {
+  outline: 2px solid var(--danger, #e5534b);
+  outline-offset: 1px;
 }
 
 .markdown-body blockquote {

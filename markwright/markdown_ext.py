@@ -365,6 +365,66 @@ class EmojiExtension(Extension):
         md.treeprocessors.register(EmojiTreeprocessor(md), "emoji", 11)
 
 
+# The `[ ]`/`[x]` checkbox marker at the start of a list item's text. The
+# lookahead (not consumed) keeps the trailing space as the item's text, and lets
+# an empty `- [ ]` (marker at end of line) still count as a task.
+TASK_MARKER_TEXT_RE = re.compile(r"^\s*\[([ xX])\](?=\s|$)")
+
+
+class TaskListTreeprocessor(Treeprocessor):
+    """Render GFM task-list items (``- [ ]`` / ``- [x]``) as checkbox inputs.
+
+    Each ``<li>`` whose text begins with a ``[ ]``/``[x]`` marker has the marker
+    stripped and an ``<input type="checkbox">`` injected at its front, plus a
+    document-order ``data-task-index`` so the client can map a clicked box back
+    to the Nth task marker in the *source* (see ``/api/toggle-task`` and
+    ``markwright.tasks.toggle_task_marker``). ``root.iter("li")`` yields items in
+    document order, matching the source line order the toggle helper scans."""
+
+    def run(self, root):
+        index = 0
+        for li in root.iter("li"):
+            holder, text = self._marker_holder(li)
+            if holder is None:
+                continue
+            match = TASK_MARKER_TEXT_RE.match(text)
+            if not match:
+                continue
+            checked = match.group(1).lower() == "x"
+
+            box = etree.Element("input")
+            box.set("type", "checkbox")
+            box.set("class", "task-list-item-checkbox")
+            box.set("data-task-index", str(index))
+            if checked:
+                box.set("checked", "checked")
+            box.tail = text[match.end():]
+            index += 1
+
+            li.set("class", (li.get("class", "") + " task-list-item").strip())
+            holder.text = ""
+            holder.insert(0, box)
+        return root
+
+    @staticmethod
+    def _marker_holder(li):
+        """The element carrying the leading marker text: the ``<li>`` itself for
+        a tight list, or its first ``<p>`` child for a loose list."""
+        if li.text and li.text.strip():
+            return li, li.text
+        first = next(iter(li), None)
+        if first is not None and first.tag == "p" and first.text and first.text.strip():
+            return first, first.text
+        return None, ""
+
+
+class TaskListExtension(Extension):
+    def extendMarkdown(self, md):
+        # After inline (priority 20) so the `[ ]` marker is still plain text at
+        # the start of the item (it's not a link, so inline leaves it intact).
+        md.treeprocessors.register(TaskListTreeprocessor(md), "task_list", 18)
+
+
 class LocalPathTreeprocessor(Treeprocessor):
     def __init__(self, md, current_file):
         super().__init__(md)

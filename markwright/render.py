@@ -28,6 +28,7 @@ from markwright.markdown_ext import (
     MermaidExtension,
     PageBreakExtension,
     StrikethroughExtension,
+    TaskListExtension,
 )
 
 ALLOWED_TAGS = set(bleach.sanitizer.ALLOWED_TAGS).union({
@@ -44,7 +45,7 @@ ALLOWED_ATTRIBUTES = {
     "img": ["src", "alt", "title", "width", "height", "loading", "align"],
     "th": ["align", "scope", "colspan", "rowspan"],
     "td": ["align", "colspan", "rowspan"],
-    "input": ["type", "checked", "disabled"],
+    "input": ["type", "checked", "disabled", "data-task-index"],
     "details": ["open"],
 }
 
@@ -138,6 +139,7 @@ def render_markdown_source(rel_path, source):
             GFMTableBreakExtension(),
             GitHubAlertExtension(),
             StrikethroughExtension(),
+            TaskListExtension(),
             EmojiExtension(),
             LocalPathExtension(rel_path),
         ],

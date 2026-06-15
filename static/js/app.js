@@ -3104,10 +3104,88 @@
     }
   });
 
+  // --- Task-list checkboxes -------------------------------------------------
+  // `- [ ]` items render as checkboxes. On a writable (local) source they're
+  // interactive: clicking toggles the box, and with auto-save on the change is
+  // persisted to the source file via /api/toggle-task (matched by the box's
+  // document-order data-task-index). On a read-only (git) source — or when
+  // auto-save is off — the toggle is visual-only / disabled. The auto-save
+  // preference (default on) lives in localStorage and surfaces as a header
+  // toggle button shown only when the document actually has checkboxes.
+  (function setupTaskCheckboxes() {
+    const body = document.querySelector(".markdown-body");
+    if (!body) return;
+    const boxes = body.querySelectorAll(".task-list-item-checkbox");
+    if (!boxes.length) return;
+
+    const editable = !!window.MARKWRIGHT_EDITABLE;
+    if (!editable || !selectedPath) {
+      boxes.forEach((b) => { b.disabled = true; });
+      return;
+    }
+
+    const autosaveKey = "markwright-task-autosave";
+    const isAutosave = () => localStorage.getItem(autosaveKey) !== "off";
+    const toggleBtn = document.getElementById("task-autosave-toggle");
+
+    function reflectToggle() {
+      if (!toggleBtn) return;
+      const on = isAutosave();
+      toggleBtn.hidden = false;
+      toggleBtn.setAttribute("aria-pressed", String(on));
+      toggleBtn.title = on
+        ? t("Auto-save checkboxes: on")
+        : t("Auto-save checkboxes: off (changes won’t be saved)");
+    }
+    reflectToggle();
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", () => {
+        localStorage.setItem(autosaveKey, isAutosave() ? "off" : "on");
+        reflectToggle();
+      });
+    }
+
+    boxes.forEach((box) => {
+      box.disabled = false;
+      box.addEventListener("change", async () => {
+        const checked = box.checked;
+        if (!isAutosave()) return;  // visual-only when auto-save is off
+        const index = Number(box.dataset.taskIndex);
+        box.classList.add("task-saving");
+        try {
+          const res = await fetch("/api/toggle-task", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: selectedPath, index, checked }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            box.checked = !checked;  // revert the optimistic toggle
+            box.classList.add("task-error");
+            setTimeout(() => box.classList.remove("task-error"), 1600);
+          } else if (typeof data.mtime === "number" && window.__mwSetMtimeBaseline) {
+            // Absorb the mtime bump so the live-reload poller doesn't reload.
+            window.__mwSetMtimeBaseline(data.mtime);
+          }
+        } catch (_) {
+          box.checked = !checked;
+        } finally {
+          box.classList.remove("task-saving");
+        }
+      });
+    });
+  })();
+
   if (selectedPath) {
     const watchUrl = `/api/mtime?file=${encodeURIComponent(selectedPath)}`;
     let baseline = null;
     let reloading = false;
+
+    // Lets our own writes (e.g. a task-checkbox auto-save) advance the baseline
+    // so the live-reload poller doesn't reload the page on a change we just made.
+    window.__mwSetMtimeBaseline = function (m) {
+      if (typeof m === "number" && (baseline === null || m > baseline)) baseline = m;
+    };
 
     async function pollMtime() {
       if (reloading) return;
