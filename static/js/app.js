@@ -1725,10 +1725,20 @@
     saveBtn.className = "source-button";
     saveBtn.textContent = t("Save");
     saveBtn.title = t("Save (Ctrl+S)");
-    const cancelBtn = document.createElement("button");
-    cancelBtn.type = "button";
-    cancelBtn.className = "source-button secondary";
-    cancelBtn.textContent = t("Cancel");
+    // "Exit" leaves the editor (keeping saved work); it is *not* a discard — that
+    // confusion is why the old "Cancel" label was renamed. "Discard changes"
+    // reverts the text to the last saved/disk version but stays in the editor.
+    const exitBtn = document.createElement("button");
+    exitBtn.type = "button";
+    exitBtn.className = "source-button secondary";
+    exitBtn.textContent = t("Exit");
+    exitBtn.title = t("Exit editor");
+    const discardBtn = document.createElement("button");
+    discardBtn.type = "button";
+    discardBtn.className = "source-button secondary";
+    discardBtn.textContent = t("Discard changes");
+    discardBtn.title = t("Revert to the last saved version");
+    discardBtn.disabled = true;
 
     // Formatting buttons (also bound to Ctrl/⌘+B/I/K below).
     function mkFmt(label, title, cls) {
@@ -1782,7 +1792,7 @@
     status.className = "editor-status";
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    toolbar.append(saveBtn, cancelBtn, fmtGroup, previewToggle, syncToggle, fsBtn, dirtyFlag, wordCount, status);
+    toolbar.append(saveBtn, exitBtn, discardBtn, fmtGroup, previewToggle, syncToggle, fsBtn, dirtyFlag, wordCount, status);
 
     // Draft autosave/recovery: a localStorage backup of unsaved edits, keyed per
     // source + file. If one exists and differs from disk, offer to restore it
@@ -2089,6 +2099,7 @@
       dirty = currentValue() !== cachedRawSource;
       dirtyFlag.hidden = !dirty;
       saveBtn.disabled = !dirty;
+      discardBtn.disabled = !dirty;  // only meaningful when there's something to revert
     }
     // Debounced draft backup: store while dirty, clear once it matches disk.
     let draftTimer = null;
@@ -2162,7 +2173,8 @@
     async function doSave() {
       if (!dirty || saveBtn.disabled) return;
       saveBtn.disabled = true;
-      cancelBtn.disabled = true;
+      exitBtn.disabled = true;
+      discardBtn.disabled = true;
       status.classList.remove("is-error");
       status.textContent = t("Saving…");
       try {
@@ -2179,19 +2191,34 @@
         cachedRawSource = currentValue();
         editorSaved = true;
         editorClearDraft();        // saved == disk, no draft to recover
-        updateDirty();             // content == baseline → clean, Save disabled
-        cancelBtn.disabled = false;
+        updateDirty();             // content == baseline → clean, Save/Discard disabled
+        exitBtn.disabled = false;
         status.textContent = t("Saved");
         if (editorCM) editorCM.focus(); else textarea.focus();
       } catch (err) {
         status.classList.add("is-error");
         status.textContent = String(err && err.message ? err.message : err);
         saveBtn.disabled = false;
-        cancelBtn.disabled = false;
+        exitBtn.disabled = false;
+        discardBtn.disabled = false;
       }
     }
     editorDoSave = doSave;
-    cancelBtn.addEventListener("click", exitEditMode);
+    // Revert to the last saved/disk version without leaving the editor. Destructive
+    // (drops unsaved edits) so it confirms first; only reachable while dirty.
+    function discardChanges() {
+      if (!dirty) return;
+      if (!window.confirm(t("Discard unsaved changes?"))) return;
+      if (editorCM) editorCM.setValue(cachedRawSource); else textarea.value = cachedRawSource;
+      editorClearDraft();
+      updateDirty();
+      updateWordCount();
+      schedulePreview();
+      status.textContent = "";
+      if (editorCM) editorCM.focus(); else textarea.focus();
+    }
+    exitBtn.addEventListener("click", exitEditMode);
+    discardBtn.addEventListener("click", discardChanges);
     saveBtn.addEventListener("click", doSave);
   }
 

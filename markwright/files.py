@@ -6,6 +6,8 @@ file-serving route. ``scan_markdown_files`` globs ``*.md`` / ``*.rst`` /
 ``README*`` and dedupes so extensionless READMEs surface; ``build_tree`` /
 ``collect_tree_metadata`` shape the flat path list for the sidebar.
 """
+import os
+
 from flask import abort
 
 from markwright import state
@@ -25,17 +27,28 @@ def safe_path(relative_path):
     return target
 
 
+def _is_wanted(name):
+    # Matches the original glob set: ``*.md`` / ``*.rst`` (case-sensitive, as
+    # rglob is on Linux) plus any ``README*`` (case-insensitive) so
+    # extensionless READMEs surface alongside markdown.
+    return name.endswith((".md", ".rst")) or name.lower().startswith("readme")
+
+
 def scan_markdown_files():
+    # Single ``os.walk`` pass with in-place pruning of IGNORED_DIRS: a tree with
+    # a large vendored dir (e.g. a git submodule) used to cost three full
+    # ``rglob`` sweeps (one per pattern) that visited every file before
+    # filtering. Pruning ``dirnames`` stops descent into ``.git``/``node_modules``
+    # entirely, and one walk replaces three.
+    root = str(state.CONTENT_DIR)
     seen = set()
-    # Glob patterns: every .md, plus README* (case-insensitive via character classes)
-    # so extensionless README files surface alongside markdown.
-    for pattern in ("*.md", "*.rst", "[Rr][Ee][Aa][Dd][Mm][Ee]*"):
-        for path in state.CONTENT_DIR.rglob(pattern):
-            if not path.is_file():
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in IGNORED_DIRS]
+        for name in filenames:
+            if not _is_wanted(name):
                 continue
-            if any(part in IGNORED_DIRS for part in path.relative_to(state.CONTENT_DIR).parts):
-                continue
-            seen.add(path.relative_to(state.CONTENT_DIR).as_posix())
+            rel = os.path.relpath(os.path.join(dirpath, name), root)
+            seen.add(rel.replace(os.sep, "/"))
     return sorted(seen, key=str.lower)
 
 
