@@ -512,3 +512,34 @@ class TestRenderMarkdown:
         p.write_text("- a\n    - b\n        - c\n")
         html_out, _ = appmod.render_markdown(p)
         assert html_out.count("<ul>") == 3  # three nesting levels
+
+    def test_fenced_code_inside_blockquote(self, content_dir):
+        # Python-Markdown's fenced_code never matches a `> `-prefixed fence, so
+        # without BlockquoteFencePreprocessor the block collapses into an inline
+        # <code> span. It should render as a highlighted block *inside* the quote.
+        p = content_dir / "doc.md"
+        p.write_text(
+            "> antes\n"
+            ">\n"
+            "> ```bash\n"
+            "> echo hola\n"
+            "> ```\n"
+            ">\n"
+            "> despues\n"
+        )
+        html_out, _ = appmod.render_markdown(p)
+        assert '<div class="codehilite">' in html_out
+        # The fence must not have leaked out as a multi-line inline code span.
+        assert "<code>bash" not in html_out
+        # Block stays nested in the blockquote (no stray closing tag before it).
+        body = html_out[html_out.index("<blockquote") : html_out.index("</blockquote>")]
+        assert '<div class="codehilite">' in body
+        assert "<p></p>" not in body  # no stray empty paragraph artifact
+
+    def test_fenced_code_in_blockquote_after_prose_renders_block(self, content_dir):
+        # The fence is the last block in the quote (no trailing blank line).
+        p = content_dir / "doc.md"
+        p.write_text("> Solución:\n>\n> ```sh\n> ls -la\n> ```\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert '<div class="codehilite">' in html_out
+        assert "<p></p>" not in html_out

@@ -11,6 +11,7 @@ import html
 import re
 from xml.etree import ElementTree as etree
 
+import markdown
 from flask import url_for
 from markdown.extensions import Extension
 from markdown.inlinepatterns import InlineProcessor
@@ -47,6 +48,112 @@ class MermaidPreprocessor(Preprocessor):
 class MermaidExtension(Extension):
     def extendMarkdown(self, md):
         md.preprocessors.register(MermaidPreprocessor(md), "mermaid", 27)
+
+
+# One or more blockquote levels: each is up to 3 leading spaces, `>`, one
+# optional space. Stripping this off every line of a quoted region yields its
+# inner markdown (the same content CommonMark would recurse into). Matching all
+# levels lets a fence in a nested (`> >`) blockquote work too.
+BLOCKQUOTE_PREFIX_RE = re.compile(r"^(?:[ ]{0,3}>[ ]?)+")
+# A code-fence opener (after the quote prefix is removed): 3+ backticks/tildes
+# with an optional info string. The closer is the same char, >= as long, bare.
+FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})[ ]*(?P<info>[^`\n]*)$")
+FENCE_CLOSE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})[ ]*$")
+# Mirror render_markdown_source's codehilite config so a quoted fence is
+# highlighted identically to a top-level one.
+_CODEHILITE_CONFIG = {
+    "codehilite": {"guess_lang": False, "linenums": False, "css_class": "codehilite"}
+}
+
+
+class BlockquoteFencePreprocessor(Preprocessor):
+    """Render fenced code blocks that live *inside* a blockquote.
+
+    Python-Markdown's ``fenced_code`` is a preprocessor that scans raw lines and
+    only recognizes a fence flush-left (up to 3 spaces). Inside a blockquote
+    every line carries a ``> `` prefix, so the fence is never matched and the
+    ```` ``` ```` ends up parsed as a multi-line inline ``<code>`` span — the
+    code block silently disappears. GitHub renders it fine because it parses the
+    blockquote's inner content recursively.
+
+    This preprocessor closes that gap: it finds a fence whose opener and closer
+    are both blockquoted, strips the quote prefix, renders the inner block with
+    the same ``fenced_code`` + ``codehilite`` config, stashes the resulting HTML,
+    and re-emits the placeholder *still quoted* so it stays inside the
+    blockquote. Registered at priority 26 — inside the 25–30 stash window (above
+    ``fenced_code`` at 25 so the quoted fence is gone before it runs, below
+    ``normalize_whitespace`` at 30 so the placeholder's control chars survive)."""
+
+    def run(self, lines):
+        out = []
+        i = 0
+        n = len(lines)
+        while i < n:
+            line = lines[i]
+            prefix_match = BLOCKQUOTE_PREFIX_RE.match(line)
+            if prefix_match is None:
+                out.append(line)
+                i += 1
+                continue
+            prefix = prefix_match.group(0)
+            opener = FENCE_OPEN_RE.match(line[prefix_match.end():])
+            if opener is None:
+                out.append(line)
+                i += 1
+                continue
+
+            fence = opener.group(1)
+            block = [line[prefix_match.end():]]
+            j = i + 1
+            closed = False
+            while j < n:
+                inner_match = BLOCKQUOTE_PREFIX_RE.match(lines[j])
+                if inner_match is None:
+                    break  # quote ended before the fence closed — bail
+                inner = lines[j][inner_match.end():]
+                block.append(inner)
+                close = FENCE_CLOSE_RE.match(inner)
+                if close and close.group(1)[0] == fence[0] and len(close.group(1)) >= len(fence):
+                    closed = True
+                    j += 1
+                    break
+                j += 1
+
+            if not closed:
+                out.append(line)
+                i += 1
+                continue
+
+            placeholder = self.md.htmlStash.store(
+                self._render_block(block, opener.group("info").strip())
+            )
+            # A blank quoted line before separates the placeholder from any
+            # preceding paragraph; one after is only needed when quoted text
+            # follows directly (otherwise it would yield a stray empty <p>).
+            bare_quote = prefix.rstrip()
+            out.extend([bare_quote, prefix + placeholder])
+            if j < n and BLOCKQUOTE_PREFIX_RE.match(lines[j]) and lines[j].strip(" >"):
+                out.append(bare_quote)
+            i = j
+        return out
+
+    def _render_block(self, block, info):
+        if info.split(" ", 1)[0].lower() == "mermaid":
+            code = "\n".join(block[1:-1])
+            return f'<pre class="mermaid">{html.escape(code)}</pre>'
+        sub = markdown.Markdown(
+            extensions=["fenced_code", "codehilite"],
+            extension_configs=_CODEHILITE_CONFIG,
+            output_format="html5",
+        )
+        return sub.convert("\n".join(block))
+
+
+class BlockquoteFenceExtension(Extension):
+    def extendMarkdown(self, md):
+        md.preprocessors.register(
+            BlockquoteFencePreprocessor(md), "blockquote_fence", 26
+        )
 
 
 # A list-item marker at line start: ordered (`1.` / `1)`) or unordered

@@ -18,6 +18,7 @@ from markwright import state
 from markwright.frontmatter import extract_frontmatter, render_frontmatter_panel
 from markwright.links import is_local_reference, resolve_reference
 from markwright.markdown_ext import (
+    BlockquoteFenceExtension,
     EmojiExtension,
     GFMHardBreakExtension,
     GFMTableBreakExtension,
@@ -132,6 +133,7 @@ def render_markdown_source(rel_path, source):
             "sane_lists",
             "toc",
             MermaidExtension(),
+            BlockquoteFenceExtension(),
             PageBreakExtension(),
             ListIndentNormalizeExtension(),
             MarkdownInHtmlAutoAttrExtension(),
