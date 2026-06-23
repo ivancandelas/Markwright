@@ -28,10 +28,12 @@ def safe_path(relative_path):
 
 
 def _is_wanted(name):
-    # Matches the original glob set: ``*.md`` / ``*.rst`` (case-sensitive, as
-    # rglob is on Linux) plus any ``README*`` (case-insensitive) so
-    # extensionless READMEs surface alongside markdown.
-    return name.endswith((".md", ".rst")) or name.lower().startswith("readme")
+    # Matches ``*.md`` / ``*.rst`` case-insensitively (so ``.MD``, ``.RST``,
+    # ``.Md``, ``.RsT`` all surface — the route dispatch already lowercases the
+    # suffix) plus any ``README*`` (case-insensitive) so extensionless READMEs
+    # surface alongside markdown.
+    lowered = name.lower()
+    return lowered.endswith((".md", ".rst")) or lowered.startswith("readme")
 
 
 def scan_markdown_files():
