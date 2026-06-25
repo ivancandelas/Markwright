@@ -23,6 +23,7 @@ from markwright.files import (
     collect_tree_metadata,
     safe_path,
     scan_markdown_files,
+    search_files,
 )
 from markwright.frontmatter import extract_frontmatter
 from markwright.links import is_local_reference, resolve_reference
@@ -292,6 +293,16 @@ def asset(filename):
     if not target.is_file() or target.suffix.lower() not in ALLOWED_ASSET_EXTENSIONS:
         abort(404)
     return send_file(target)
+
+
+@app.route("/api/search")
+def api_search():
+    """Full-text search across the active source. ``?q=`` must be >= 2 chars
+    (shorter queries return an empty result set rather than scanning every
+    file). Read-only and bounded by the same scan-set/IGNORED_DIRS as the
+    sidebar, so no path-traversal surface."""
+    query = (request.args.get("q") or "").strip()
+    return jsonify({"query": query, "results": search_files(query)})
 
 
 @app.route("/raw/<path:filename>")

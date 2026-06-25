@@ -774,6 +774,117 @@ a {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+.search-input-tight {
+  margin-bottom: 8px;
+}
+
+.search-mode {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.search-mode-btn {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.search-mode-btn:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.search-mode-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.search-results {
+  margin-bottom: 16px;
+}
+
+.search-results-status,
+.search-results-count {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.search-results-count {
+  font-weight: 600;
+}
+
+.search-result-file {
+  margin-bottom: 12px;
+}
+
+.search-result-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.search-result-name:hover {
+  color: var(--accent);
+}
+
+.search-result-badge {
+  flex: none;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--panel-alt);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 7px;
+  line-height: 18px;
+}
+
+.search-result-snippet {
+  display: block;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.search-result-snippet:hover {
+  border-left-color: var(--accent);
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.search-result-snippet mark,
+.markdown-body mark.search-hit {
+  background: var(--mark-bg, #fde68a);
+  color: #1f2328;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.markdown-body mark.search-hit.is-active-hit {
+  background: var(--mark-active-bg, #fbbf24);
+}
+
 .tree-controls {
   display: flex;
   align-items: center;

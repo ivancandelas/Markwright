@@ -140,7 +140,12 @@
         </details>
 
         <label class="search-label" for="file-search">{{ _('Search markdown files') }}</label>
-        <input id="file-search" class="search-input" type="search" placeholder="{{ _('Filter files...') }}" autocomplete="off">
+        <input id="file-search" class="search-input search-input-tight" type="search" placeholder="{{ _('Filter files...') }}" autocomplete="off">
+        <div class="search-mode" role="group" aria-label="{{ _('Search mode') }}">
+          <button type="button" class="search-mode-btn is-active" data-mode="name" aria-pressed="true" title="{{ _('Filter by file name') }}">{{ _('Name') }}</button>
+          <button type="button" class="search-mode-btn" data-mode="content" aria-pressed="false" title="{{ _('Search in file contents') }}">{{ _('Contents') }}</button>
+        </div>
+        <nav class="search-results" id="search-results" aria-label="{{ _('Content search results') }}" hidden></nav>
 
         <div class="tree-controls">
           <select class="tree-sort-select" id="tree-sort" title="{{ _('Sort folders and files') }}" aria-label="{{ _('Sort order') }}">

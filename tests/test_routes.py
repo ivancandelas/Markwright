@@ -82,6 +82,33 @@ class TestAsset:
         assert client.get("/asset/../../etc/passwd").status_code == 404
 
 
+class TestSearch:
+    def test_search_finds_content_across_files(self, client):
+        # "paragraph" only appears in hello.md's body.
+        r = client.get("/api/search?q=paragraph")
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data["query"] == "paragraph"
+        paths = [hit["path"] for hit in data["results"]]
+        assert "hello.md" in paths
+        hit = next(h for h in data["results"] if h["path"] == "hello.md")
+        assert hit["count"] >= 1
+        assert hit["matches"][0]["match_len"] == len("paragraph")
+
+    def test_search_is_case_insensitive(self, client):
+        r = client.get("/api/search?q=NESTED")
+        paths = [hit["path"] for hit in r.get_json()["results"]]
+        assert "sub/nested.md" in paths
+
+    def test_search_short_query_returns_empty(self, client):
+        r = client.get("/api/search?q=a")
+        assert r.status_code == 200
+        assert r.get_json()["results"] == []
+
+    def test_search_missing_query_returns_empty(self, client):
+        assert client.get("/api/search").get_json()["results"] == []
+
+
 class TestFavicon:
     def test_favicon_served(self, client):
         r = client.get("/favicon.ico")

@@ -54,6 +54,61 @@ def scan_markdown_files():
     return sorted(seen, key=str.lower)
 
 
+def _snippet(line, idx, qlen, radius):
+    # A short window around the match for the results list. Leading/trailing
+    # ellipses mark a truncated line; ``match_start``/``match_len`` are offsets
+    # *into the returned text* so the client can wrap exactly the hit in <mark>.
+    line = line.replace("\t", " ")
+    start = max(0, idx - radius)
+    end = min(len(line), idx + qlen + radius)
+    prefix = "…" if start > 0 else ""
+    suffix = "…" if end < len(line) else ""
+    return {
+        "line": None,  # filled by caller
+        "text": prefix + line[start:end] + suffix,
+        "match_start": len(prefix) + (idx - start),
+        "match_len": qlen,
+    }
+
+
+def search_files(query, max_files=60, max_matches_per_file=5, snippet_radius=48):
+    """Case-insensitive full-text search across the current source's markdown/RST.
+
+    Scans the same file set as ``scan_markdown_files`` (so it honours the active
+    ``CONTENT_DIR`` and ``IGNORED_DIRS``), reads each as UTF-8 (ignoring decode
+    errors), and returns per-file match groups sorted by hit count (desc):
+    ``[{"path", "count", "matches": [{"text", "match_start", "match_len", "line"}]}]``.
+    Only the first ``max_matches_per_file`` snippets are returned per file, but
+    ``count`` reflects every matching line.
+    """
+    needle = (query or "").strip().lower()
+    if len(needle) < 2:
+        return []
+    qlen = len(needle)
+    results = []
+    for rel in scan_markdown_files():
+        full = state.CONTENT_DIR / rel
+        try:
+            text = full.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        matches = []
+        count = 0
+        for lineno, line in enumerate(text.splitlines(), 1):
+            idx = line.lower().find(needle)
+            if idx == -1:
+                continue
+            count += 1
+            if len(matches) < max_matches_per_file:
+                snip = _snippet(line, idx, qlen, snippet_radius)
+                snip["line"] = lineno
+                matches.append(snip)
+        if count:
+            results.append({"path": rel, "count": count, "matches": matches})
+    results.sort(key=lambda r: (-r["count"], r["path"].lower()))
+    return results[:max_files]
+
+
 def build_tree(files):
     root = {}
     for file_path in files:

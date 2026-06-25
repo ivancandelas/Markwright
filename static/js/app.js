@@ -1311,9 +1311,12 @@
     });
   }
 
-  searchInput.addEventListener("input", function () {
-    const query = searchInput.value.trim().toLowerCase();
-
+  // --- Sidebar search: two modes ------------------------------------------
+  // "name" filters the file tree by path (client-side, unchanged behaviour);
+  // "content" hits GET /api/search to full-text search every file in the
+  // active source and renders a results panel. The toggle buttons switch
+  // modes; the same input box drives both.
+  function applyNameFilter(query) {
     document.querySelectorAll(".tree-file").forEach(function (item) {
       const matches = item.dataset.filePath.includes(query);
       item.hidden = Boolean(query && !matches);
@@ -1331,6 +1334,125 @@
       }
     });
     syncCollapseAllToggle();
+  }
+
+  const searchResults = document.getElementById("search-results");
+  const searchModeButtons = Array.from(document.querySelectorAll(".search-mode-btn"));
+  let searchMode = "name";
+  let searchTimer = null;
+  let searchSeq = 0;
+
+  function fileUrl(path, query) {
+    const params = new URLSearchParams({ file: path });
+    if (query) params.set("q", query);
+    return location.pathname + "?" + params.toString();
+  }
+
+  function setStatus(message) {
+    searchResults.innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "search-results-status";
+    p.textContent = message;
+    searchResults.appendChild(p);
+  }
+
+  function renderSearchResults(data) {
+    const results = (data && data.results) || [];
+    searchResults.innerHTML = "";
+    if (!results.length) {
+      setStatus(t("No matches found."));
+      return;
+    }
+    const total = results.reduce(function (sum, r) { return sum + r.count; }, 0);
+    const head = document.createElement("p");
+    head.className = "search-results-count";
+    head.textContent = t("%(files)s file(s), %(matches)s match(es)", { files: results.length, matches: total });
+    searchResults.appendChild(head);
+
+    results.forEach(function (r) {
+      const group = document.createElement("div");
+      group.className = "search-result-file";
+
+      const name = document.createElement("a");
+      name.className = "search-result-name";
+      name.href = fileUrl(r.path, data.query);
+      name.title = r.path;
+      name.appendChild(document.createTextNode(r.path));
+      const badge = document.createElement("span");
+      badge.className = "search-result-badge";
+      badge.textContent = String(r.count);
+      name.appendChild(badge);
+      group.appendChild(name);
+
+      r.matches.forEach(function (m) {
+        const snip = document.createElement("a");
+        snip.className = "search-result-snippet";
+        snip.href = fileUrl(r.path, data.query);
+        const start = m.match_start;
+        const len = m.match_len;
+        snip.appendChild(document.createTextNode(m.text.slice(0, start)));
+        const mark = document.createElement("mark");
+        mark.textContent = m.text.slice(start, start + len);
+        snip.appendChild(mark);
+        snip.appendChild(document.createTextNode(m.text.slice(start + len)));
+        group.appendChild(snip);
+      });
+      searchResults.appendChild(group);
+    });
+  }
+
+  async function runContentSearch(query) {
+    if (query.length < 2) {
+      setStatus(t("Type at least 2 characters to search file contents."));
+      return;
+    }
+    const seq = ++searchSeq;
+    setStatus(t("Searching…"));
+    try {
+      const res = await fetch("/api/search?q=" + encodeURIComponent(query), { cache: "no-store" });
+      if (!res.ok) throw new Error("http " + res.status);
+      const data = await res.json();
+      if (seq !== searchSeq) return;  // a newer query superseded this one
+      renderSearchResults(data);
+    } catch (_) {
+      if (seq !== searchSeq) return;
+      setStatus(t("Search failed."));
+    }
+  }
+
+  function setSearchMode(mode) {
+    if (mode === searchMode) return;
+    searchMode = mode;
+    searchModeButtons.forEach(function (btn) {
+      const on = btn.dataset.mode === mode;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    searchInput.placeholder = mode === "content" ? t("Search in files...") : t("Filter files...");
+    const query = searchInput.value.trim();
+    if (mode === "content") {
+      applyNameFilter("");          // restore the full tree under the results
+      searchResults.hidden = false;
+      runContentSearch(query);
+    } else {
+      searchResults.hidden = true;
+      if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
+      applyNameFilter(query.toLowerCase());
+    }
+  }
+
+  searchModeButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () { setSearchMode(btn.dataset.mode); });
+  });
+
+  searchInput.addEventListener("input", function () {
+    const query = searchInput.value.trim();
+    if (searchMode === "name") {
+      applyNameFilter(query.toLowerCase());
+      return;
+    }
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(function () { runContentSearch(query); }, 200);
   });
 
   const diagramOverlay = document.getElementById("diagram-overlay");
@@ -3094,8 +3216,66 @@
     localStorage.setItem(contentScrollKey, String(contentPanel.scrollTop || window.scrollY));
   });
 
+  // Wraps every occurrence of the `?q=` query in the rendered document with
+  // <mark class="search-hit"> (skipping <pre>/<code>/scripts) and scrolls the
+  // first hit into view. Returns true when it scrolled, so the saved-scroll
+  // restore below can yield to it. Triggered by clicking a content-search
+  // result, which navigates here with &q=…
+  function highlightSearchQuery() {
+    const q = (new URLSearchParams(location.search).get("q") || "").trim();
+    if (q.length < 2) return false;
+    const body = document.querySelector(".markdown-body");
+    if (!body) return false;
+    const needle = q.toLowerCase();
+    const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (node) {
+        if (!node.nodeValue || node.nodeValue.toLowerCase().indexOf(needle) === -1) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        const p = node.parentNode;
+        if (!p || p.nodeName === "SCRIPT" || p.nodeName === "STYLE" ||
+            (p.closest && p.closest("pre, code, mark"))) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const targets = [];
+    let node;
+    while ((node = walker.nextNode())) targets.push(node);
+
+    let first = null;
+    targets.forEach(function (text) {
+      const value = text.nodeValue;
+      const lower = value.toLowerCase();
+      const frag = document.createDocumentFragment();
+      let pos = 0;
+      let idx = lower.indexOf(needle);
+      while (idx !== -1) {
+        if (idx > pos) frag.appendChild(document.createTextNode(value.slice(pos, idx)));
+        const mark = document.createElement("mark");
+        mark.className = "search-hit";
+        mark.textContent = value.slice(idx, idx + needle.length);
+        if (!first) { first = mark; mark.classList.add("is-active-hit"); }
+        frag.appendChild(mark);
+        pos = idx + needle.length;
+        idx = lower.indexOf(needle, pos);
+      }
+      if (pos < value.length) frag.appendChild(document.createTextNode(value.slice(pos)));
+      text.parentNode.replaceChild(frag, text);
+    });
+
+    if (first) {
+      first.scrollIntoView({ block: "center" });
+      return true;
+    }
+    return false;
+  }
+
   window.addEventListener("load", function () {
     sidebar.scrollTop = Number(localStorage.getItem(sidebarScrollKey) || 0);
+    // A search-result jump (&q=…) wins over the saved per-file scroll position.
+    if (highlightSearchQuery()) return;
     const savedContentScroll = Number(localStorage.getItem(contentScrollKey) || 0);
     if (window.matchMedia("(max-width: 820px)").matches) {
       window.scrollTo({ top: savedContentScroll, behavior: "auto" });
