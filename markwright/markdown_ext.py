@@ -376,6 +376,51 @@ class GFMTableBreakExtension(Extension):
         md.preprocessors.register(GFMTableBreakPreprocessor(md), "gfm_table_break", 22)
 
 
+class GFMListBreakPreprocessor(Preprocessor):
+    # Python-Markdown never lets a list interrupt a paragraph, so a list written
+    # flush against the preceding prose (no blank line) gets swallowed into that
+    # paragraph — and for an ordered list the first item vanishes, shifting every
+    # visible number down by one. CommonMark/GFM *do* let a list interrupt a
+    # paragraph: any bullet, or an ordered list whose first marker is `1`. Mirror
+    # that by inserting a blank line above such a marker when it directly follows
+    # a non-blank, non-list prose line. Runs after fenced_code (25) so a marker
+    # inside a stashed code block is never seen; skips indented lines so it only
+    # fires on a paragraph-interrupting (flush-left) marker, and never splits a
+    # marker that already follows another list item.
+
+    def run(self, lines):
+        out = []
+        for line in lines:
+            if line.startswith("    ") or line.startswith("\t"):
+                out.append(line)
+                continue
+            match = LIST_ITEM_RE.match(line)
+            if (
+                match
+                and not match.group(1)  # flush-left only
+                and out
+                and out[-1].strip()
+                and not LIST_ITEM_RE.match(out[-1])  # keep contiguous lists together
+                and self._can_interrupt(match.group(2))
+            ):
+                out.append("")
+            out.append(line)
+        return out
+
+    @staticmethod
+    def _can_interrupt(marker):
+        # A bullet always interrupts; an ordered list only when it starts at 1
+        # (CommonMark: `2.`, `3.`… stay part of the paragraph above).
+        if marker[0] in "-*+":
+            return True
+        return marker[:-1] == "1"
+
+
+class GFMListBreakExtension(Extension):
+    def extendMarkdown(self, md):
+        md.preprocessors.register(GFMListBreakPreprocessor(md), "gfm_list_break", 21.5)
+
+
 GITHUB_ALERT_RE = re.compile(
     r"^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:\n|$)",
     re.IGNORECASE,

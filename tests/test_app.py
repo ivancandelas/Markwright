@@ -513,6 +513,32 @@ class TestRenderMarkdown:
         html_out, _ = appmod.render_markdown(p)
         assert html_out.count("<ul>") == 3  # three nesting levels
 
+    def test_ordered_list_interrupts_paragraph(self, content_dir):
+        # Python-Markdown never lets a list interrupt a paragraph, so a `1.`
+        # written flush against the preceding prose gets swallowed and the list
+        # renumbers from the *second* item. GFMListBreak restores the GFM rule:
+        # an ordered list starting at 1 (or any bullet) interrupts a paragraph.
+        p = content_dir / "doc.md"
+        p.write_text(
+            "**Reglas de Negocio:**\n"
+            "1. Primera regla.\n"
+            "\n"
+            "2. Segunda regla.\n"
+        )
+        html_out, _ = appmod.render_markdown(p)
+        assert "<ol>" in html_out
+        # The first item must survive as a list item, not merge into the prose.
+        assert "Primera regla." in html_out[html_out.index("<ol>") :]
+        assert "<li>" in html_out and html_out.count("<li>") == 2
+
+    def test_ordered_list_not_starting_at_one_stays_in_paragraph(self, content_dir):
+        # CommonMark only lets `1.` interrupt a paragraph; `2.`/`3.`… stay part
+        # of the prose above, so no spurious list is created.
+        p = content_dir / "doc.md"
+        p.write_text("Some prose here\n2. not a new list\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert "<ol>" not in html_out
+
     def test_fenced_code_inside_blockquote(self, content_dir):
         # Python-Markdown's fenced_code never matches a `> `-prefixed fence, so
         # without BlockquoteFencePreprocessor the block collapses into an inline
