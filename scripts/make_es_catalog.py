@@ -263,6 +263,8 @@ ES = {
     "Add a <code>.md</code> file to this directory, then refresh the browser.":
         "Añade un archivo <code>.md</code> a este directorio y luego recarga el navegador.",
     "On this page": "En esta página",
+    "Filter headings...": "Filtrar títulos...",
+    "No headings match.": "Ningún título coincide.",
     "Hide table of contents": "Ocultar la tabla de contenido",
     "Show table of contents": "Mostrar la tabla de contenido",
     # --- preset modal ---------------------------------------------------

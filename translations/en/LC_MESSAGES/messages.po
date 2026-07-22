@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-25 11:38-0600\n"
+"POT-Creation-Date: 2026-07-22 11:23-0600\n"
 "PO-Revision-Date: 2026-06-02 17:30-0600\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -194,7 +194,7 @@ msgstr ""
 msgid "Copy link to this section"
 msgstr ""
 
-#: static/js/app.js:683 static/js/app.js:684 templates/index.html:533
+#: static/js/app.js:683 static/js/app.js:684 templates/index.html:537
 msgid "Back to top"
 msgstr ""
 
@@ -350,7 +350,7 @@ msgstr ""
 msgid "View source"
 msgstr ""
 
-#: static/js/app.js:1848 templates/index.html:558
+#: static/js/app.js:1848 templates/index.html:562
 msgid "Save"
 msgstr ""
 
@@ -362,7 +362,7 @@ msgstr ""
 msgid "Exit"
 msgstr ""
 
-#: static/js/app.js:1857 templates/index.html:565
+#: static/js/app.js:1857 templates/index.html:569
 msgid "Exit editor"
 msgstr ""
 
@@ -469,7 +469,7 @@ msgstr ""
 msgid "Delete \"%(name)s\"? This cannot be undone."
 msgstr ""
 
-#: static/js/app.js:2466 templates/index.html:486
+#: static/js/app.js:2466 templates/index.html:490
 msgid "Delete"
 msgstr ""
 
@@ -513,11 +513,11 @@ msgstr ""
 msgid "Remove \"%(label)s\" from recents and delete the cached clone?"
 msgstr ""
 
-#: static/js/app.js:3317
+#: static/js/app.js:3403
 msgid "Auto-save checkboxes: on"
 msgstr ""
 
-#: static/js/app.js:3318
+#: static/js/app.js:3404
 msgid "Auto-save checkboxes: off (changes won’t be saved)"
 msgstr ""
 
@@ -529,7 +529,7 @@ msgstr ""
 msgid "Keyboard shortcuts (?)"
 msgstr ""
 
-#: templates/index.html:19 templates/index.html:520 templates/index.html:523
+#: templates/index.html:19 templates/index.html:524 templates/index.html:527
 msgid "Keyboard shortcuts"
 msgstr ""
 
@@ -662,7 +662,7 @@ msgstr ""
 msgid "Filter by file name"
 msgstr ""
 
-#: templates/index.html:145 templates/index.html:347
+#: templates/index.html:145 templates/index.html:351
 msgid "Name"
 msgstr ""
 
@@ -763,7 +763,7 @@ msgstr ""
 msgid "Auto-save checkboxes"
 msgstr ""
 
-#: templates/index.html:241 templates/index.html:541
+#: templates/index.html:241 templates/index.html:545
 msgid "Toggle source view"
 msgstr ""
 
@@ -787,7 +787,7 @@ msgstr ""
 msgid "Bookmarks"
 msgstr ""
 
-#: templates/index.html:250 templates/index.html:323
+#: templates/index.html:250 templates/index.html:324
 msgid "On this page"
 msgstr ""
 
@@ -815,26 +815,26 @@ msgstr ""
 msgid "Manage presets"
 msgstr ""
 
-#: templates/index.html:268 templates/index.html:351
+#: templates/index.html:268 templates/index.html:355
 msgid "Header"
 msgstr ""
 
-#: templates/index.html:270 templates/index.html:278 templates/index.html:353
-#: templates/index.html:361 templates/index.html:374 templates/index.html:480
+#: templates/index.html:270 templates/index.html:278 templates/index.html:357
+#: templates/index.html:365 templates/index.html:378 templates/index.html:484
 msgid "Left"
 msgstr ""
 
-#: templates/index.html:271 templates/index.html:279 templates/index.html:354
-#: templates/index.html:362 templates/index.html:375
+#: templates/index.html:271 templates/index.html:279 templates/index.html:358
+#: templates/index.html:366 templates/index.html:379
 msgid "Center"
 msgstr ""
 
-#: templates/index.html:272 templates/index.html:280 templates/index.html:355
-#: templates/index.html:363 templates/index.html:376 templates/index.html:481
+#: templates/index.html:272 templates/index.html:280 templates/index.html:359
+#: templates/index.html:367 templates/index.html:380 templates/index.html:485
 msgid "Right"
 msgstr ""
 
-#: templates/index.html:276 templates/index.html:359
+#: templates/index.html:276 templates/index.html:363
 msgid "Footer"
 msgstr ""
 
@@ -876,315 +876,323 @@ msgstr ""
 msgid "Add a <code>.md</code> file to this directory, then refresh the browser."
 msgstr ""
 
-#: templates/index.html:324
+#: templates/index.html:325
 msgid "Hide table of contents"
 msgstr ""
 
-#: templates/index.html:328
+#: templates/index.html:327
+msgid "Filter headings..."
+msgstr ""
+
+#: templates/index.html:329
+msgid "No headings match."
+msgstr ""
+
+#: templates/index.html:332
 msgid "Show table of contents"
 msgstr ""
 
-#: templates/index.html:334 templates/index.html:337
+#: templates/index.html:338 templates/index.html:341
 msgid "PDF presets"
 msgstr ""
 
-#: templates/index.html:338 templates/index.html:495 templates/index.html:524
+#: templates/index.html:342 templates/index.html:499 templates/index.html:528
 msgid "Close (Esc)"
 msgstr ""
 
-#: templates/index.html:338 templates/index.html:495 templates/index.html:524
-#: templates/index.html:573
+#: templates/index.html:342 templates/index.html:499 templates/index.html:528
+#: templates/index.html:577
 msgid "Close"
 msgstr ""
 
-#: templates/index.html:343
+#: templates/index.html:347
 msgid "+ New preset"
 msgstr ""
 
-#: templates/index.html:367
+#: templates/index.html:371
 msgid "Download file name"
 msgstr ""
 
-#: templates/index.html:372
+#: templates/index.html:376
 msgid "Logo position"
 msgstr ""
 
-#: templates/index.html:379
+#: templates/index.html:383
 msgid "Logo image"
 msgstr ""
 
-#: templates/index.html:384
+#: templates/index.html:388
 msgid "Logo preview"
 msgstr ""
 
-#: templates/index.html:385
+#: templates/index.html:389
 msgid "Remove logo"
 msgstr ""
 
-#: templates/index.html:388
+#: templates/index.html:392
 msgid "Page size"
 msgstr ""
 
-#: templates/index.html:393
+#: templates/index.html:397
 msgid "Tabloid / Ledger (11×17)"
 msgstr ""
 
-#: templates/index.html:396
+#: templates/index.html:400
 msgid "Orientation"
 msgstr ""
 
-#: templates/index.html:398
+#: templates/index.html:402
 msgid "Portrait"
 msgstr ""
 
-#: templates/index.html:399
+#: templates/index.html:403
 msgid "Landscape"
 msgstr ""
 
-#: templates/index.html:404
+#: templates/index.html:408
 msgid "Body font"
 msgstr ""
 
-#: templates/index.html:407
+#: templates/index.html:411
 msgid "Body font size (percent)"
 msgstr ""
 
-#: templates/index.html:413
+#: templates/index.html:417
 msgid "Include contents page (clickable, before the document)"
 msgstr ""
 
-#: templates/index.html:417
+#: templates/index.html:421
 msgid "Include frontmatter panel in the PDF body"
 msgstr ""
 
-#: templates/index.html:420
+#: templates/index.html:424
 msgid "Cover page"
 msgstr ""
 
-#: templates/index.html:423
+#: templates/index.html:427
 msgid "Add a cover page"
 msgstr ""
 
-#: templates/index.html:426
+#: templates/index.html:430
 msgid "Title"
 msgstr ""
 
-#: templates/index.html:429
+#: templates/index.html:433
 msgid "Subtitle"
 msgstr ""
 
-#: templates/index.html:430
+#: templates/index.html:434
 msgid "e.g. Technical Specification"
 msgstr ""
 
-#: templates/index.html:432
+#: templates/index.html:436
 msgid "Metadata rows (one <code>Label: value</code> per line)"
 msgstr ""
 
-#: templates/index.html:435
+#: templates/index.html:439
 msgid "Footer line"
 msgstr ""
 
-#: templates/index.html:440
+#: templates/index.html:444
 msgid "Cover image"
 msgstr ""
 
-#: templates/index.html:442
+#: templates/index.html:446
 msgid "None"
 msgstr ""
 
-#: templates/index.html:443
+#: templates/index.html:447
 msgid "Use preset logo"
 msgstr ""
 
-#: templates/index.html:444
+#: templates/index.html:448
 msgid "Upload an image"
 msgstr ""
 
-#: templates/index.html:449
+#: templates/index.html:453
 msgid "Blank page after cover"
 msgstr ""
 
-#: templates/index.html:453
+#: templates/index.html:457
 msgid "Image file"
 msgstr ""
 
-#: templates/index.html:457
+#: templates/index.html:461
 msgid "Cover image preview"
 msgstr ""
 
-#: templates/index.html:458
+#: templates/index.html:462
 msgid "Remove cover image"
 msgstr ""
 
-#: templates/index.html:464
+#: templates/index.html:468
 msgid "Default values (fallback)"
 msgstr ""
 
-#: templates/index.html:467
+#: templates/index.html:471
 msgid ""
 "Use these defaults when the document has no frontmatter (or is missing a "
 "key)"
 msgstr ""
 
-#: templates/index.html:470
+#: templates/index.html:474
 msgid "Fallback values (one <code>key: value</code> per line)"
 msgstr ""
 
-#: templates/index.html:477
+#: templates/index.html:481
 msgid "Margins (mm)"
 msgstr ""
 
-#: templates/index.html:478
+#: templates/index.html:482
 msgid "Top"
 msgstr ""
 
-#: templates/index.html:479
+#: templates/index.html:483
 msgid "Bottom"
 msgstr ""
 
-#: templates/index.html:484
+#: templates/index.html:488
 msgid "Save preset"
 msgstr ""
 
-#: templates/index.html:485
+#: templates/index.html:489
 msgid "Duplicate"
 msgstr ""
 
-#: templates/index.html:494 templates/index.html:569
+#: templates/index.html:498 templates/index.html:573
 msgid "Diagram viewer"
 msgstr ""
 
-#: templates/index.html:497
+#: templates/index.html:501
 msgid "Zoom controls"
 msgstr ""
 
-#: templates/index.html:498 templates/index.html:503 templates/index.html:505
-#: templates/index.html:506 templates/index.html:507 templates/index.html:508
+#: templates/index.html:502 templates/index.html:507 templates/index.html:509
+#: templates/index.html:510 templates/index.html:511 templates/index.html:512
 msgid "Zoom"
 msgstr ""
 
-#: templates/index.html:499
+#: templates/index.html:503
 msgid "Zoom out"
 msgstr ""
 
-#: templates/index.html:500
+#: templates/index.html:504
 msgid "Zoom level"
 msgstr ""
 
-#: templates/index.html:501
+#: templates/index.html:505
 msgid "Zoom in"
 msgstr ""
 
-#: templates/index.html:504
+#: templates/index.html:508
 msgid "Reset zoom (0)"
 msgstr ""
 
-#: templates/index.html:504 templates/index.html:572
+#: templates/index.html:508 templates/index.html:576
 msgid "Reset zoom"
 msgstr ""
 
-#: templates/index.html:510 templates/index.html:513
+#: templates/index.html:514 templates/index.html:517
 msgid "Backdrop opacity"
 msgstr ""
 
-#: templates/index.html:511
+#: templates/index.html:515
 msgid "Opacity"
 msgstr ""
 
-#: templates/index.html:512
+#: templates/index.html:516
 msgid "Decrease backdrop opacity"
 msgstr ""
 
-#: templates/index.html:514
+#: templates/index.html:518
 msgid "Increase backdrop opacity"
 msgstr ""
 
-#: templates/index.html:528
+#: templates/index.html:532
 msgid "General"
 msgstr ""
 
-#: templates/index.html:530
+#: templates/index.html:534
 msgid "Show this help"
 msgstr ""
 
-#: templates/index.html:531
+#: templates/index.html:535
 msgid "Search files"
 msgstr ""
 
-#: templates/index.html:532
+#: templates/index.html:536
 msgid "Toggle sidebar"
 msgstr ""
 
-#: templates/index.html:534
+#: templates/index.html:538
 msgid "Toggle focus reading mode"
 msgstr ""
 
-#: templates/index.html:535
+#: templates/index.html:539
 msgid "Close dialogs / exit modes"
 msgstr ""
 
-#: templates/index.html:539
+#: templates/index.html:543
 msgid "Document"
 msgstr ""
 
-#: templates/index.html:542
+#: templates/index.html:546
 msgid "Edit document (when editable)"
 msgstr ""
 
-#: templates/index.html:546
+#: templates/index.html:550
 msgid "Focus reading mode"
 msgstr ""
 
-#: templates/index.html:548
+#: templates/index.html:552
 msgid "Page down"
 msgstr ""
 
-#: templates/index.html:549
+#: templates/index.html:553
 msgid "Page up"
 msgstr ""
 
-#: templates/index.html:550
+#: templates/index.html:554
 msgid "Page down / up"
 msgstr ""
 
-#: templates/index.html:551
+#: templates/index.html:555
 msgid "Scroll down / up"
 msgstr ""
 
-#: templates/index.html:552
+#: templates/index.html:556
 msgid "Exit focus mode"
 msgstr ""
 
-#: templates/index.html:556
+#: templates/index.html:560
 msgid "Editor"
 msgstr ""
 
-#: templates/index.html:559
+#: templates/index.html:563
 msgid "Bold"
 msgstr ""
 
-#: templates/index.html:560
+#: templates/index.html:564
 msgid "Italic"
 msgstr ""
 
-#: templates/index.html:561
+#: templates/index.html:565
 msgid "Insert link"
 msgstr ""
 
-#: templates/index.html:562
+#: templates/index.html:566
 msgid "Find"
 msgstr ""
 
-#: templates/index.html:563
+#: templates/index.html:567
 msgid "Find next"
 msgstr ""
 
-#: templates/index.html:564
+#: templates/index.html:568
 msgid "Find previous"
 msgstr ""
 
-#: templates/index.html:571
+#: templates/index.html:575
 msgid "Zoom in / out"
 msgstr ""
 

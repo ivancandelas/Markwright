@@ -3116,6 +3116,90 @@
       )
     );
 
+    // --- TOC filter -------------------------------------------------------
+    // A long document's index needs a lot of scrolling to reach one entry, so
+    // the panel carries a filter box: non-matching <li>s collapse (an ancestor
+    // stays visible whenever a descendant matches, keeping the hierarchy
+    // readable) and the matched substring is highlighted.
+    const tocSearch = document.getElementById("toc-search");
+    const tocEmpty = document.getElementById("toc-empty");
+    const tocItems = Array.from(tocPanel.querySelectorAll(".toc li"));
+    let tocFiltering = false;
+
+    // Accent-insensitive so "modulo" finds "Módulo".
+    function foldText(value) {
+      return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    tocLinks.forEach(function (link) {
+      link.dataset.tocText = link.textContent;
+    });
+
+    function highlightTocLink(link, query) {
+      const text = link.dataset.tocText || link.textContent;
+      link.textContent = text;
+      if (!query) return;
+      const at = foldText(text).indexOf(query);
+      if (at < 0) return;
+      link.textContent = "";
+      link.appendChild(document.createTextNode(text.slice(0, at)));
+      const mark = document.createElement("mark");
+      mark.textContent = text.slice(at, at + query.length);
+      link.appendChild(mark);
+      link.appendChild(document.createTextNode(text.slice(at + query.length)));
+    }
+
+    function applyTocFilter(raw) {
+      const query = foldText(raw.trim());
+      tocFiltering = query.length > 0;
+      let matches = 0;
+      tocItems.forEach(function (li) {
+        const link = li.querySelector(":scope > a");
+        const hit = !!query && !!link && foldText(link.dataset.tocText || link.textContent).includes(query);
+        li.classList.toggle("is-toc-match", hit);
+        if (link) highlightTocLink(link, query);
+        if (hit) matches += 1;
+      });
+      tocItems.forEach(function (li) {
+        // Keep a branch whose child matched, so a nested heading keeps its path.
+        const keep = !query || li.classList.contains("is-toc-match") || !!li.querySelector(".is-toc-match");
+        li.classList.toggle("is-toc-filtered", !keep);
+      });
+      if (tocEmpty) tocEmpty.hidden = !query || matches > 0;
+      // Collapsing/expanding entries moves the panel's scrollTop, which would
+      // otherwise make the TOC->content sync yank the document around; ride out
+      // those events, then re-centre on the heading actually being read.
+      contentDriving = true;
+      clearTimeout(clearContentTimer);
+      clearContentTimer = setTimeout(function () {
+        contentDriving = false;
+        if (!tocFiltering) updateActiveToc(true);
+      }, 120);
+    }
+
+    if (tocSearch) {
+      tocSearch.addEventListener("input", function () {
+        applyTocFilter(tocSearch.value);
+      });
+      tocSearch.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          tocSearch.value = "";
+          applyTocFilter("");
+        }
+        // Enter jumps to the first visible match.
+        if (event.key === "Enter") {
+          const first = tocPanel.querySelector(".toc li.is-toc-match > a");
+          if (first) { event.preventDefault(); first.click(); }
+        }
+      });
+      // Clicking a filtered entry is the end of the search — restore the index.
+      tocPanel.addEventListener("click", function (event) {
+        if (!tocFiltering || !event.target.closest("a[href^='#']")) return;
+        tocSearch.value = "";
+        applyTocFilter("");
+      });
+    }
+
     // tocDriving / contentDriving guard against the two scroll handlers
     // ping-ponging: while one direction is steering, the other ignores the
     // scroll events its own programmatic scroll generates.
@@ -3141,7 +3225,7 @@
       const activeLink = tocLinks.get(active.id);
       if (activeLink) {
         activeLink.classList.add("is-active");
-        if (allowTocScroll &&
+        if (allowTocScroll && !tocFiltering &&
             (activeLink.offsetTop < tocPanel.scrollTop ||
              activeLink.offsetTop > tocPanel.scrollTop + tocPanel.clientHeight)) {
           activeLink.scrollIntoView({ block: "nearest" });
@@ -3152,7 +3236,9 @@
     // TOC -> content: align the heading whose TOC entry sits at the top of the
     // TOC viewport to the top of the content pane.
     function syncContentFromToc() {
-      if (!headings.length) return;
+      // While filtering, most entries are display:none (zero rects) and the
+      // remaining ones no longer map to the document's reading order.
+      if (!headings.length || tocFiltering) return;
       // At the TOC's bottom the last entries can't reach the top edge, so map
       // straight to the content bottom to keep the tail reachable.
       if (tocPanel.scrollTop + tocPanel.clientHeight >= tocPanel.scrollHeight - 2) {

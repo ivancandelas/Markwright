@@ -2499,6 +2499,47 @@ body.editor-fs-lock {
   font-size: 13px;
 }
 
+/* Pinned to the top of the (scrolling) TOC panel so the filter box stays
+   reachable in a long index. Opaque background so entries scroll under it. */
+.toc-panel-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 4px;
+  background: var(--bg);
+}
+
+.toc-search {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.toc-empty {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Filter matches: hidden entries collapse; the matching text is highlighted. */
+.toc-panel .toc li.is-toc-filtered {
+  display: none;
+}
+
+/* Entries are single-line + ellipsis by default; a match wraps so the
+   highlighted text can't be the part that gets clipped. */
+.toc-panel .toc li.is-toc-match > a {
+  white-space: normal;
+  overflow: visible;
+}
+
+.toc-panel .toc a mark {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
 .toc-panel-title {
   margin: 0 0 8px;
   color: var(--muted);

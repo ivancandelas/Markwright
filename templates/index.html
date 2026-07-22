@@ -319,10 +319,14 @@
           </div>
           {% if toc %}
             <aside class="toc-panel" id="toc-panel">
-              <div class="toc-panel-header">
-                <p class="toc-panel-title">{{ _('On this page') }}</p>
-                <button class="icon-button toc-collapse" id="toc-collapse" type="button" title="{{ _('Hide table of contents') }}" aria-label="{{ _('Hide table of contents') }}" aria-controls="toc-panel" aria-expanded="true">»</button>
+              <div class="toc-panel-top">
+                <div class="toc-panel-header">
+                  <p class="toc-panel-title">{{ _('On this page') }}</p>
+                  <button class="icon-button toc-collapse" id="toc-collapse" type="button" title="{{ _('Hide table of contents') }}" aria-label="{{ _('Hide table of contents') }}" aria-controls="toc-panel" aria-expanded="true">»</button>
+                </div>
+                <input id="toc-search" class="search-input search-input-tight toc-search" type="search" placeholder="{{ _('Filter headings...') }}" autocomplete="off" aria-label="{{ _('Filter headings...') }}">
               </div>
+              <p class="toc-empty" id="toc-empty" hidden>{{ _('No headings match.') }}</p>
               {{ toc|safe }}
             </aside>
             <button class="toc-show" id="toc-show" type="button" title="{{ _('Show table of contents') }}" aria-label="{{ _('Show table of contents') }}" aria-controls="toc-panel" aria-expanded="false">≡</button>
