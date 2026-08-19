@@ -262,6 +262,165 @@
     });
   })();
 
+
+  // --- Alt accelerators (Alt + letter) + hint badges ------------------------
+  // OS-style access keys: hold Alt and a small badge is painted over every
+  // reachable control; Alt+<letter> activates it. Unlike the single-key
+  // shortcuts above these stay live while typing or editing (that is what the
+  // modifier buys), so Alt+E is the reliable way *out* of the editor too.
+  // Badges are absolutely-positioned siblings on <body> rather than a ::after
+  // on each control: the sidebar/TOC panels clip their overflow, which would
+  // swallow a pseudo-element badge on any control near their edge.
+  (function setupAltAccelerators() {
+    // Long enough that a quick Alt+E chord never flashes the badges, short
+    // enough that a deliberate "hold Alt to look" feels immediate.
+    const HINT_DELAY_MS = 300;
+
+    function visible(el) {
+      if (!el || el.hidden || el.disabled) return false;
+      if (el.closest("[hidden]")) return false;
+      // A closed <details> still reports a client rect for its slotted body in
+      // Chrome (content-visibility), so it needs its own check — except for its
+      // own <summary>, which is exactly the control that opens it.
+      const closedDetails = el.closest("details:not([open])");
+      if (closedDetails && !(el.tagName === "SUMMARY" && el.parentElement === closedDetails)) return false;
+      return el.getClientRects().length > 0;
+    }
+
+    // First visible selector wins — the collapse/show button pairs swap as
+    // their panel toggles, so both are listed and only one is ever on screen.
+    function locate(accel) {
+      for (const sel of accel.sel) {
+        const el = document.querySelector(sel);
+        if (visible(el)) return el;
+      }
+      return null;
+    }
+
+    // A control living inside a collapsed panel: click its openers (outermost
+    // first) until it surfaces, then re-locate — every toggle here is a
+    // synchronous class/attribute flip, so the control is there right after.
+    function locateOrReveal(accel) {
+      let el = locate(accel);
+      for (const sel of accel.reveal || []) {
+        if (el) break;
+        const opener = document.querySelector(sel);
+        if (visible(opener)) {
+          opener.click();
+          el = locate(accel);
+        }
+      }
+      return el;
+    }
+
+    function focusInput(el) {
+      el.focus();
+      if (el.select) el.select();
+    }
+
+    const ACCELS = [
+      { key: "a", sel: ["#file-menu-toggle"] },
+      { key: "b", sel: ["#sidebar-collapse", "#sidebar-show"] },
+      { key: "c", sel: ["#toc-collapse", "#toc-show"] },
+      { key: "d", sel: ["#export-pdf"] },
+      { key: "e", sel: ["#edit-toggle"] },
+      { key: "f", sel: ["#file-search"], act: focusInput, reveal: ["#sidebar-show"] },
+      { key: "g", sel: ["#settings-toggle"], reveal: ["#sidebar-show"] },
+      { key: "h", sel: ["#toc-search"], act: focusInput, reveal: ["#toc-show"] },
+      { key: "i", sel: ["#frontmatter-toggle"] },
+      { key: "k", sel: ["#shortcuts-toggle"], reveal: ["#sidebar-show"] },
+      { key: "m", sel: ["#bookmark-toggle"] },
+      { key: "o", sel: ["#source-input"], act: focusInput, reveal: ["#sidebar-show", "#source-picker > summary"] },
+      { key: "r", sel: ["#focus-read-toggle"] },
+      { key: "s", sel: ["#source-view-toggle"] },
+      { key: "t", sel: [".back-to-top"] },
+    ];
+
+    let hintTimer = null;
+    let hintsOn = false;
+    let altDown = false;
+
+    function clearHints() {
+      document.querySelectorAll(".accel-badge").forEach((n) => n.remove());
+      hintsOn = false;
+    }
+
+    function cancel() {
+      if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+      altDown = false;
+      if (hintsOn) clearHints();
+    }
+
+    function showHints() {
+      clearHints();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      ACCELS.forEach((accel) => {
+        const el = locate(accel);
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const badge = document.createElement("div");
+        badge.className = "accel-badge";
+        badge.textContent = accel.key.toUpperCase();
+        document.body.appendChild(badge);
+        // Pinned to the control's bottom-right corner: a wide text input keeps
+        // its placeholder readable, an icon button keeps its glyph readable.
+        const left = Math.min(Math.max(rect.right - badge.offsetWidth + 3, 2), vw - badge.offsetWidth - 2);
+        const top = Math.min(Math.max(rect.bottom - badge.offsetHeight + 3, 2), vh - badge.offsetHeight - 2);
+        badge.style.left = `${Math.round(left)}px`;
+        badge.style.top = `${Math.round(top)}px`;
+      });
+      hintsOn = true;
+    }
+
+    // event.code keeps the mapping layout-independent: on macOS Alt+E reports
+    // event.key "´", and on a Spanish layout several letters shift too.
+    function letterOf(event) {
+      if (/^Key[A-Z]$/.test(event.code || "")) return event.code.slice(3).toLowerCase();
+      return event.key && event.key.length === 1 ? event.key.toLowerCase() : "";
+    }
+
+    document.addEventListener("keydown", function (event) {
+      // AltGr reports ctrlKey+altKey — never an accelerator, it is a character.
+      if (event.ctrlKey || event.metaKey) { cancel(); return; }
+      if (event.key === "Alt") {
+        if (event.repeat || hintsOn || hintTimer) return;
+        altDown = true;
+        hintTimer = setTimeout(function () {
+          hintTimer = null;
+          if (altDown) showHints();
+        }, HINT_DELAY_MS);
+        return;
+      }
+      if (event.key === "Escape") { cancel(); return; }
+      if (!event.altKey) return;
+      const letter = letterOf(event);
+      const accel = letter && ACCELS.find((a) => a.key === letter);
+      if (!accel) return;
+      const el = locateOrReveal(accel);
+      cancel();
+      if (!el) return;
+      event.preventDefault();
+      (accel.act || ((node) => node.click()))(el);
+    });
+
+    document.addEventListener("keyup", function (event) {
+      if (event.key !== "Alt") return;
+      const wasShowing = hintsOn;
+      cancel();
+      // Swallow the browser's own "focus the menu bar" on a bare Alt tap, but
+      // only when we actually showed hints — otherwise Alt keeps working
+      // normally for anyone who never held it long enough to see them.
+      if (wasShowing) event.preventDefault();
+    });
+
+    window.addEventListener("blur", cancel);
+    document.addEventListener("mousedown", cancel);
+    window.addEventListener("resize", function () { if (hintsOn) showHints(); });
+    document.addEventListener("scroll", function () { if (hintsOn) showHints(); }, true);
+  })();
+
   const tocCollapse = document.getElementById("toc-collapse");
   const tocShow = document.getElementById("toc-show");
   const tocHiddenKey = "markwright-toc-hidden";
@@ -987,27 +1146,78 @@
 
     const posForCurrentFile = () => posBookmarks.filter((b) => b.file === currentFile);
 
+    // --- Jumping to a saved spot -------------------------------------------
+    // Two precision problems shaped this, and neither is solved by
+    // `scrollIntoView`:
+    //
+    //  1. A saved spot is anchored to the nearest heading *above* the reading
+    //     position (headings survive a re-render / reflow, a raw pixel offset
+    //     does not) — but landing on that heading is not where the reader was.
+    //     So the capture also stores `offset`, the distance from that heading
+    //     to the actual position, and the jump replays heading + offset.
+    //  2. The scroll itself wakes the TOC<->content sync, which re-aligns the
+    //     pane mid-flight and cuts the animation short. The jump mutes the sync
+    //     for the ride, then waits for the scroll to stop moving and re-measures
+    //     — images and mermaid diagrams finishing layout shift the target under
+    //     an animation already in progress.
+
+    const scrollerTop = () => (isMobile() ? window.scrollY : (contentPanel ? contentPanel.scrollTop : 0));
+
+    // Scroll offset that parks `el` at the top of the reading pane, matching the
+    // 12px lead the TOC->content sync uses so the two agree on "at the top".
+    function spotTopFor(el) {
+      const top = el.getBoundingClientRect().top;
+      if (isMobile()) return Math.max(0, window.scrollY + top - 12);
+      if (!contentPanel) return 0;
+      return Math.max(0, contentPanel.scrollTop + top - contentPanel.getBoundingClientRect().top - 12);
+    }
+
+    function bookmarkTargetTop(b) {
+      const el = b.id ? document.getElementById(b.id) : null;
+      if (!el) return Math.max(0, Number(b.y) || 0);
+      return Math.max(0, spotTopFor(el) + (Number(b.offset) || 0));
+    }
+
     function scrollToPos(b) {
-      if (b.id) {
-        const el = document.getElementById(b.id);
-        if (el) {
-          el.scrollIntoView({ block: "start", behavior: "smooth" });
-          return;
+      if (!isMobile() && !contentPanel) return;
+      const setTop = function (top, behavior) {
+        if (isMobile()) window.scrollTo({ top: top, behavior: behavior });
+        else contentPanel.scrollTo({ top: top, behavior: behavior });
+      };
+      if (window.__mwSuppressTocSync) window.__mwSuppressTocSync(1600);
+      setTop(bookmarkTargetTop(b), "smooth");
+
+      // Settle loop: once the scroll has held still for a few frames, re-measure
+      // the target and nudge it exact. Capped in tries and time so an
+      // unreachable target (past the end of the document) can't spin.
+      let last = -1;
+      let still = 0;
+      let fixes = 0;
+      const deadline = performance.now() + 1600;
+      requestAnimationFrame(function step() {
+        const now = scrollerTop();
+        still = Math.abs(now - last) < 0.5 ? still + 1 : 0;
+        last = now;
+        if (still >= 3) {
+          const want = bookmarkTargetTop(b);
+          if (Math.abs(now - want) <= 1 || fixes >= 4) return;
+          fixes += 1;
+          still = 0;
+          setTop(want, "auto");
         }
-      }
-      const y = Number(b.y || 0);
-      if (isMobile()) window.scrollTo({ top: y, behavior: "smooth" });
-      else if (contentPanel) contentPanel.scrollTo({ top: y, behavior: "smooth" });
+        if (performance.now() < deadline) requestAnimationFrame(step);
+      });
     }
 
     // Capture the heading currently nearest the top of the viewport (matching
-    // the TOC active-heading logic) so a saved spot maps to a stable anchor;
+    // the TOC active-heading logic) so a saved spot maps to a stable anchor,
+    // plus the distance from it so the jump restores the exact reading position;
     // falls back to a raw scroll offset when the page has no headings above.
     function captureCurrentSpot() {
       const headings = Array.from(document.querySelectorAll(
         ".markdown-body h1[id], .markdown-body h2[id], .markdown-body h3[id], " +
         ".markdown-body h4[id], .markdown-body h5[id], .markdown-body h6[id]"));
-      const y = isMobile() ? window.scrollY : (contentPanel ? contentPanel.scrollTop : 0);
+      const y = scrollerTop();
       const panelTop = contentPanel ? contentPanel.getBoundingClientRect().top : 0;
       let active = null;
       for (const h of headings) {
@@ -1015,10 +1225,16 @@
         else break;
       }
       if (active) {
-        return { file: currentFile, id: active.id, label: (active.textContent || "").replace(/¶$/, "").trim(), y: y };
+        return {
+          file: currentFile,
+          id: active.id,
+          label: (active.textContent || "").replace(/¶$/, "").trim(),
+          y: y,
+          offset: Math.max(0, Math.round(y - spotTopFor(active))),
+        };
       }
       const pct = Math.round(y); // raw offset; label gives the user a hint
-      return { file: currentFile, id: "", label: t("Position at %(px)spx", { px: pct }), y: y };
+      return { file: currentFile, id: "", label: t("Position at %(px)spx", { px: pct }), y: y, offset: 0 };
     }
 
     function renderPosList() {
@@ -1057,7 +1273,17 @@
     // on heading id so tapping the same spot twice doesn't pile up entries.
     function addCurrentSpot() {
       const spot = captureCurrentSpot();
-      if (spot.id && posBookmarks.some((b) => b.file === spot.file && b.id === spot.id)) {
+      // Dedupe per heading, but within ~1 screen: two spots far apart under the
+      // same long heading are genuinely different places to come back to.
+      const near = spot.id && posBookmarks.find(function (b) {
+        return b.file === spot.file && b.id === spot.id &&
+               Math.abs((Number(b.offset) || 0) - spot.offset) < 300;
+      });
+      if (near) {
+        // Refresh the stored offset so re-marking a spot updates it in place.
+        near.offset = spot.offset;
+        near.y = spot.y;
+        writeStore(posKey, posBookmarks);
         return false;
       }
       posBookmarks = posBookmarks.concat([spot]);
@@ -1122,8 +1348,8 @@
       bookmarkFab.type = "button";
       bookmarkFab.className = "bookmark-fab";
       bookmarkFab.textContent = "🔖";
-      bookmarkFab.title = t("Tap to bookmark this spot · hold to open the list");
-      bookmarkFab.setAttribute("aria-label", t("Tap to bookmark this spot · hold to open the list"));
+      bookmarkFab.title = t("Bookmarks");
+      bookmarkFab.setAttribute("aria-label", t("Bookmarks"));
       bookmarkFab.setAttribute("aria-expanded", "false");
       bookmarkFab.hidden = true;
       document.body.appendChild(bookmarkFab);
@@ -1137,48 +1363,16 @@
       contentPanel.addEventListener("scroll", onFabScroll, { passive: true });
       window.addEventListener("scroll", onFabScroll, { passive: true });
 
-      // Gesture: a tap quick-adds the current spot (with a checkmark flash); a
-      // long-press opens the floating panel to jump to / manage saved spots.
-      const LONG_PRESS_MS = 450;
-      let pressTimer = null;
-      let longPressed = false;
-      let flashTimer = null;
-
-      function flashSaved() {
-        addCurrentSpot();
-        bookmarkFab.classList.add("is-saved");
-        bookmarkFab.textContent = "✓";
-        clearTimeout(flashTimer);
-        flashTimer = setTimeout(function () {
-          bookmarkFab.classList.remove("is-saved");
-          bookmarkFab.textContent = "🔖";
-        }, 1200);
-      }
-
-      function openFloating() {
-        longPressed = true;
-        const wasFloating = bookmarkPopover.classList.contains("is-floating");
-        setOpen(bookmarkPopover.hidden || !wasFloating, true);
-      }
-
-      bookmarkFab.addEventListener("pointerdown", function (event) {
-        if (event.button && event.button !== 0) return;  // primary / touch only
-        longPressed = false;
-        clearTimeout(pressTimer);
-        pressTimer = setTimeout(openFloating, LONG_PRESS_MS);
-      });
-      const cancelPress = function () { clearTimeout(pressTimer); };
-      bookmarkFab.addEventListener("pointerup", cancelPress);
-      bookmarkFab.addEventListener("pointerleave", cancelPress);
-      bookmarkFab.addEventListener("pointercancel", cancelPress);
-      // A long-press on touch would otherwise pop the context menu.
-      bookmarkFab.addEventListener("contextmenu", function (event) { event.preventDefault(); });
-
+      // A plain click opens the floating panel — both "bookmark this spot" and
+      // the jump list live in it, so there is nothing to hold for. (It used to
+      // quick-add on tap and need a 450ms long-press for the list, which just
+      // read as an unresponsive button.)
       bookmarkFab.addEventListener("click", function (event) {
         event.stopPropagation();
-        if (longPressed) { longPressed = false; return; }  // handled by openFloating
-        flashSaved();
+        const wasFloating = bookmarkPopover.classList.contains("is-floating");
+        setOpen(bookmarkPopover.hidden || !wasFloating, true);
       });
+
       onFabScroll();
     }
 
@@ -1665,6 +1859,99 @@
       switchSource(button.dataset.path);
     });
   });
+
+  // --- Hover tooltips ([data-tooltip]) -------------------------------------
+  // Recent-source rows ellipsize their label, so the full path only shows on
+  // hover. A native `title` is too slow and too small for a long path (and a
+  // git source also wants its remote URL on a second line), so this renders a
+  // themed panel instead. Delegated from `document` and body-appended with
+  // fixed positioning: it survives re-rendered rows and the sidebar's
+  // `overflow`, which would clip an absolutely-positioned pseudo-element.
+  (function setupHoverTooltips() {
+    const TOOLTIP_DELAY_MS = 120;
+    const GAP = 6;
+    let tip = null;
+    let anchor = null;
+    let timer = null;
+
+    function hide() {
+      window.clearTimeout(timer);
+      timer = null;
+      anchor = null;
+      if (tip) tip.hidden = true;
+    }
+
+    function place(target) {
+      const rect = target.getBoundingClientRect();
+      // Measure at final width before clamping, so wrapped text is accounted for.
+      tip.style.left = "0px";
+      tip.style.top = "0px";
+      tip.hidden = false;
+      const box = tip.getBoundingClientRect();
+      let left = rect.left;
+      if (left + box.width > window.innerWidth - GAP) {
+        left = Math.max(GAP, window.innerWidth - GAP - box.width);
+      }
+      let top = rect.bottom + GAP;
+      if (top + box.height > window.innerHeight - GAP) {
+        top = Math.max(GAP, rect.top - GAP - box.height);
+      }
+      tip.style.left = `${Math.round(left)}px`;
+      tip.style.top = `${Math.round(top)}px`;
+    }
+
+    function show(target) {
+      const text = target.getAttribute("data-tooltip");
+      if (!text) return;
+      if (!tip) {
+        tip = document.createElement("div");
+        tip.className = "hover-tooltip";
+        tip.setAttribute("role", "tooltip");
+        tip.hidden = true;
+        document.body.appendChild(tip);
+      }
+      tip.textContent = text;
+      anchor = target;
+      place(target);
+    }
+
+    function schedule(target) {
+      if (target === anchor) return;
+      window.clearTimeout(timer);
+      // Already showing one? Hop straight to the next anchor so the visible
+      // tooltip never lags behind the pointer.
+      if (anchor) {
+        show(target);
+        return;
+      }
+      timer = window.setTimeout(function () {
+        show(target);
+      }, TOOLTIP_DELAY_MS);
+    }
+
+    document.addEventListener("mouseover", function (event) {
+      const el = event.target;
+      const target = el instanceof Element ? el.closest("[data-tooltip]") : null;
+      if (!target) {
+        if (anchor || timer) hide();
+        return;
+      }
+      schedule(target);
+    });
+    document.addEventListener("mouseleave", hide);
+    document.addEventListener("focusin", function (event) {
+      const target = event.target.closest("[data-tooltip]");
+      if (target) show(target);
+      else hide();
+    });
+    document.addEventListener("focusout", hide);
+    document.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") hide();
+    });
+    document.addEventListener("click", hide, true);
+  })();
 
   async function removeSource(path) {
     if (sourceOpen) sourceOpen.disabled = true;
@@ -3208,6 +3495,28 @@
     let clearTocTimer = null;
     let clearContentTimer = null;
 
+    // A programmatic jump (the bookmark list) fights this sync: the scroll it
+    // starts makes updateActiveToc scroll the TOC, whose own handler then
+    // re-aligns the content and cuts the jump short. A jump announces itself
+    // here so both directions stand down until it has landed.
+    let jumping = false;
+    let jumpTimer = null;
+    window.__mwSuppressTocSync = function (ms) {
+      jumping = true;
+      clearTimeout(jumpTimer);
+      jumpTimer = setTimeout(function () {
+        // Order matters: this refresh scrolls the TOC to the heading just landed
+        // on, and the TOC's own handler would answer by re-aligning the content —
+        // pulling the document off the spot the jump just reached. contentDriving
+        // keeps that direction muted until the TOC has stopped moving.
+        contentDriving = true;
+        jumping = false;
+        updateActiveToc(true);
+        clearTimeout(clearContentTimer);
+        clearContentTimer = setTimeout(function () { contentDriving = false; }, 150);
+      }, ms || 800);
+    };
+
     function updateActiveToc(allowTocScroll) {
       if (!headings.length) return;
       const panelTop = contentPanel.getBoundingClientRect().top;
@@ -3225,7 +3534,7 @@
       const activeLink = tocLinks.get(active.id);
       if (activeLink) {
         activeLink.classList.add("is-active");
-        if (allowTocScroll && !tocFiltering &&
+        if (allowTocScroll && !tocFiltering && !jumping &&
             (activeLink.offsetTop < tocPanel.scrollTop ||
              activeLink.offsetTop > tocPanel.scrollTop + tocPanel.clientHeight)) {
           activeLink.scrollIntoView({ block: "nearest" });
@@ -3277,7 +3586,7 @@
 
     let tocScheduled = false;
     function onTocPanelScroll() {
-      if (contentDriving || tocScheduled) return;
+      if (contentDriving || jumping || tocScheduled) return;
       tocScheduled = true;
       requestAnimationFrame(function () {
         tocDriving = true;

@@ -87,7 +87,7 @@ def rewrite_local_links(html_str, current_file):
 
 
 def render_rst(file_path):
-    return render_rst_source(file_path.relative_to(state.CONTENT_DIR),
+    return render_rst_source(file_path.relative_to(state.content_dir()),
                              file_path.read_text(encoding="utf-8"))
 
 
@@ -116,7 +116,7 @@ def render_rst_source(rel_path, source):
 
 
 def render_markdown(file_path):
-    return render_markdown_source(file_path.relative_to(state.CONTENT_DIR),
+    return render_markdown_source(file_path.relative_to(state.content_dir()),
                                   file_path.read_text(encoding="utf-8"))
 
 

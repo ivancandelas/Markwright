@@ -196,8 +196,6 @@ ES = {
     "Bookmark this file": "Marcar este archivo",
     "+ Bookmark this spot": "+ Marcar esta posición",
     "✓ Bookmarked": "✓ Marcado",
-    "Tap to bookmark this spot · hold to open the list":
-        "Toca para marcar esta posición · mantén pulsado para ver la lista",
     "No saved positions on this page yet.":
         "Aún no hay posiciones guardadas en esta página.",
     "Remove bookmark": "Quitar marcador",
@@ -333,6 +331,14 @@ ES = {
     "Keyboard shortcuts (?)": "Atajos de teclado (?)",
     "Keyboard shortcuts": "Atajos de teclado",
     "Show this help": "Mostrar esta ayuda",
+    "Alt shortcuts (hold Alt to see the badges)": "Atajos con Alt (mantén Alt para ver las etiquetas)",
+    "Alt shortcuts work everywhere, including while typing or editing.": "Los atajos con Alt funcionan siempre, incluso al escribir o editar.",
+    "Edit document": "Editar el documento",
+    "Filter files": "Filtrar archivos",
+    "Filter headings": "Filtrar encabezados",
+    "Toggle table of contents": "Mostrar/ocultar el índice",
+    "Export (PDF / Word)": "Exportar (PDF / Word)",
+    "Open folder or repository": "Abrir carpeta o repositorio",
     "Search files": "Buscar archivos",
     "Toggle sidebar": "Mostrar/ocultar la barra lateral",
     "Toggle focus reading mode": "Activar/desactivar el modo de lectura enfocada",

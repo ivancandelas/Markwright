@@ -1,4 +1,5 @@
-"""File discovery and the path-safety guard, all scoped to ``state.CONTENT_DIR``.
+"""File discovery and the path-safety guard, all scoped to ``state.content_dir()``
+— the *calling session's* directory, not the process default.
 
 ``safe_path`` is the path-traversal guard — it must reject anything escaping the
 served directory; keep the ``relative_to(CONTENT_DIR)`` check on any new
@@ -18,9 +19,10 @@ def safe_path(relative_path):
     if not relative_path:
         abort(404)
 
-    target = (state.CONTENT_DIR / relative_path).resolve()
+    root = state.content_dir()
+    target = (root / relative_path).resolve()
     try:
-        target.relative_to(state.CONTENT_DIR)
+        target.relative_to(root)
     except ValueError:
         abort(404)
 
@@ -42,7 +44,7 @@ def scan_markdown_files():
     # ``rglob`` sweeps (one per pattern) that visited every file before
     # filtering. Pruning ``dirnames`` stops descent into ``.git``/``node_modules``
     # entirely, and one walk replaces three.
-    root = str(state.CONTENT_DIR)
+    root = str(state.content_dir())
     seen = set()
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in IGNORED_DIRS]
@@ -87,7 +89,7 @@ def search_files(query, max_files=60, max_matches_per_file=5, snippet_radius=48)
     qlen = len(needle)
     results = []
     for rel in scan_markdown_files():
-        full = state.CONTENT_DIR / rel
+        full = state.content_dir() / rel
         try:
             text = full.read_text(encoding="utf-8", errors="ignore")
         except OSError:
@@ -127,7 +129,7 @@ def collect_tree_metadata(files):
     # (macOS/BSD) and falls back to st_mtime on Linux.
     meta = {}
     for rel in files:
-        full = state.CONTENT_DIR / rel
+        full = state.content_dir() / rel
         try:
             st = full.stat()
             mtime = getattr(st, "st_birthtime", None) or st.st_mtime

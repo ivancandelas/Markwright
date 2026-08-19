@@ -376,17 +376,28 @@ a {
   overflow: auto;
   border-right: 1px solid var(--border);
   background: var(--panel);
-  padding: 18px 14px;
+  /* No top padding: the sticky .sidebar-header supplies it, so it can park
+     flush against the scrollport top instead of jumping up 18px on scroll. */
+  padding: 0 14px 18px;
 }
 
+/* Pinned to the top of the sidebar's own scroll box so the collapse («),
+   settings and shortcuts buttons stay reachable in a long file tree.
+   Negative side margins + matching padding make its opaque background span
+   the sidebar's full width, so tree rows scroll under it, not beside it. */
 .sidebar-header {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin: 0 -14px 8px;
+  padding: 18px 14px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar-header-actions {
@@ -409,8 +420,10 @@ a {
 
 .settings-popover {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Inset by the header's own padding (it now bleeds into the sidebar's side
+     padding), so the popover still lines up with the sidebar content. */
+  left: 14px;
+  right: 14px;
   top: calc(100% + 6px);
   z-index: 40;
   display: flex;
@@ -747,6 +760,51 @@ a {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* Hover tooltip for [data-tooltip] elements. Body-appended and fixed so the
+   sidebar's overflow can't clip it; `pre-line` keeps the optional second line
+   (a git source's remote URL) on its own row. */
+.hover-tooltip {
+  position: fixed;
+  z-index: 200;
+  max-width: min(420px, 90vw);
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.hover-tooltip[hidden] {
+  display: none;
+}
+
+/* Alt-accelerator hint badges: painted on <body> (see setupAltAccelerators in
+   app.js) so the sidebar/TOC overflow can't clip a badge on an edge control. */
+.accel-badge {
+  position: fixed;
+  z-index: 300;
+  min-width: 16px;
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 .search-label {
@@ -1894,6 +1952,24 @@ a {
   min-width: 0;
 }
 
+/* The Alt block lists 15 rows — span the grid and split it into columns so the
+   help card stays roughly square instead of growing one very tall column. */
+.shortcuts-group-wide {
+  grid-column: 1 / -1;
+}
+
+.shortcuts-list.shortcuts-list-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px 32px;
+}
+
+.shortcuts-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .shortcuts-group-title {
   margin: 0 0 10px;
   font-size: 0.78rem;
@@ -2226,7 +2302,8 @@ body.editor-fs-lock {
   color: var(--accent);
 }
 
-.bookmark-fab.is-saved {
+/* Highlighted while its floating panel is open (a click opens it). */
+.bookmark-fab[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft);

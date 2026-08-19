@@ -10,7 +10,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
 import app as appmod
-from markwright import state
+from markwright import sources, state
+
+
+@pytest.fixture(autouse=True)
+def isolated_sources_store(tmp_path_factory, monkeypatch):
+    """Redirect ``sources.json`` into a throwaway cache for every test.
+
+    Autouse and unconditional because writes are no longer opt-in: minting a
+    principal seeds a recents bucket, so *any* test that touches the Flask test
+    client writes to this file. Without the redirect that would be the user's
+    real ``~/.cache/markwright`` state."""
+    cache = tmp_path_factory.mktemp("mw-cache")
+    monkeypatch.setattr(sources, "CACHE_DIR", cache)
+    monkeypatch.setattr(sources, "SOURCES_FILE", cache / "sources.json")
+    return cache / "sources.json"
 
 
 @pytest.fixture

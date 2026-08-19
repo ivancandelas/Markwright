@@ -596,7 +596,60 @@ _PAGE_PX = {
 ALLOWED_PAGE_SIZES = set(_PAGE_PX)
 
 
-def _render_pdf(url, header_template, footer_template, show_hf, page_format, landscape, margin, font_scale=DEFAULT_FONT_SCALE, prepend_html="", show_frontmatter=False, font_family=""):
+def playwright_cookies(url, cookie_mapping):
+    """Translate the exporting client's cookies into Playwright cookie records
+    for ``url``'s origin.
+
+    **Why this exists.** PDF export launches a headless Chrome with an empty,
+    throwaway profile and points it back at this same server. That Chrome is a
+    *different HTTP client*: it carries none of the requesting browser's cookies,
+    so without this it authenticates as nobody and is served the process-default
+    content dir — i.e. it would export whatever document some *other* session
+    last selected. Every cookie here was sent by the client for this very origin,
+    so handing them back to a same-origin fetch crosses no trust boundary.
+
+    **Why cookies rather than a signed token in the export URL.** The printed
+    page pulls subresources — ``/asset/<img>``, ``/static/*``, ``/api/mtime`` —
+    and ``/asset`` resolves through the same session-scoped content dir. A token
+    on the top-level URL does not propagate to an ``<img src="/asset/…">``, so
+    every local image would 404 out of the PDF. Cookies attach to subresource
+    requests automatically, which is exactly the propagation this needs.
+
+    Cookie attributes matter here:
+
+    * ``sameSite="Lax"`` — set explicitly. Playwright's default of ``"None"``
+      is only honored alongside ``Secure``, so over plain http the record would
+      be rejected outright. Lax is sufficient: the top-level ``goto`` is a GET
+      navigation and every subresource is same-site.
+    * ``secure=False`` — the dev server speaks http; a Secure cookie would be
+      dropped. Behind an https terminator ``url`` is https and a non-Secure
+      cookie is still sent, so this stays correct either way.
+    * ``httpOnly`` is irrelevant to us — it restricts *scripts*, not the wire —
+      and the session cookie arrives here server-side regardless.
+
+    Cookies are not port-specific (RFC 6265 §1), so the dev server's port needs
+    no special handling; the host from ``url`` is what scopes them.
+    """
+    if not cookie_mapping:
+        return []
+    parsed = urlparse(url)
+    if not parsed.hostname:
+        return []
+    return [
+        {
+            "name": name,
+            "value": value,
+            "domain": parsed.hostname,
+            "path": "/",
+            "httpOnly": False,
+            "secure": False,
+            "sameSite": "Lax",
+        }
+        for name, value in cookie_mapping.items()
+    ]
+
+
+def _render_pdf(url, header_template, footer_template, show_hf, page_format, landscape, margin, font_scale=DEFAULT_FONT_SCALE, prepend_html="", show_frontmatter=False, font_family="", cookies=None):
     from playwright.sync_api import sync_playwright
 
     # Chrome blocks navigation to "unsafe" ports (e.g. 5060/SIP) with
@@ -610,6 +663,13 @@ def _render_pdf(url, header_template, footer_template, show_hf, page_format, lan
         browser = pw.chromium.launch(channel="chrome", headless=True, args=launch_args)
         try:
             page = browser.new_page()
+            # Seed the throwaway profile with the requesting client's cookies
+            # *before* the first navigation, so both the top-level document and
+            # its subresources resolve against that client's session (its content
+            # dir, its UI locale) instead of the process default. See
+            # playwright_cookies for why this is a cookie and not a URL token.
+            if cookies:
+                page.context.add_cookies(cookies)
             # `load` (the window load event) is deterministic; the previous
             # `networkidle` was flaky here because the live-reload poll hits
             # /api/mtime every second, so the network rarely stays idle for the

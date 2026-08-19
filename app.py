@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -41,11 +41,45 @@ from markwright.config import (
     LOGOS_DIR,
     MAX_LOGO_BYTES,
     REPOS_DIR,
+    load_secret_key,
     migrate_legacy_cache,
 )
 
 
 app = Flask(__name__)
+
+# --- sessions --------------------------------------------------------------
+# The signed session cookie carries (a) an anonymous principal id and (b) the
+# content dir this client switched to, so two browsers can view two different
+# sources against one server. Without it CONTENT_DIR was a single process global
+# and the last client to switch sources changed them for everyone.
+#
+# The key is persisted (see load_secret_key) rather than regenerated per process:
+# debug mode auto-reloads on every edit, and a new key each time would silently
+# void every session and drop clients back onto the process default.
+app.secret_key = load_secret_key()
+# HttpOnly: no client script needs to read it, so keep it off the DOM's attack
+# surface. SameSite=Lax still travels on the top-level GET navigations the PDF
+# exporter replays. Secure is deliberately *not* forced: the dev server speaks
+# plain http on loopback and a Secure cookie would simply never be stored.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Sessions are marked permanent so the active source survives a browser restart;
+# resuming where you left off is the whole premise of the startup-resume logic.
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)
+
+
+@app.before_request
+def bind_principal():
+    """Give every client an identity before any handler needs one. Anonymous
+    today; the same slot holds the authenticated user id once login exists, at
+    which point per-session state becomes per-user for free.
+
+    On the request that mints a new identity, its recents bucket is seeded from
+    the shared list — so a new browser opens on a populated picker, and owns that
+    state from then on instead of trailing whatever another client last wrote."""
+    if state.ensure_principal():
+        seed_recents_for_new_principal()
 
 # --- i18n (Flask-Babel) ----------------------------------------------------
 # English is the source language (every msgid is the English string); Spanish is
@@ -140,6 +174,7 @@ def parse_args():
 # package; re-imported so the route handlers below (and appmod.* in tests)
 # keep referencing them unqualified.
 from markwright.sources import (
+    all_referenced_paths,
     fetch_repo,
     is_git_url,
     is_local_source,
@@ -150,6 +185,7 @@ from markwright.sources import (
     remember_last_file,
     resolve_startup_dir,
     save_recents,
+    seed_recents_for_new_principal,
     set_content_dir,
 )
 from markwright.presets import (
@@ -202,7 +238,7 @@ def index():
         # Only the PDF export navigates here with pdf_toc=1, to prepend a
         # clickable "Contents" page; normal viewing never sets it.
         pdf_toc=request.args.get("pdf_toc") == "1",
-        content_dir=state.CONTENT_DIR,
+        content_dir=state.content_dir(),
         recents=load_recents(),
         # Edit mode writes changes back to disk; only meaningful for a local
         # source (a git clone would be clobbered on the next pull).
@@ -249,7 +285,7 @@ def api_set_source():
 
 @app.route("/api/sources")
 def api_sources():
-    return jsonify({"content_dir": str(state.CONTENT_DIR), "recents": load_recents()})
+    return jsonify({"content_dir": str(state.content_dir()), "recents": load_recents()})
 
 
 @app.route("/api/source/remove", methods=["POST"])
@@ -264,7 +300,7 @@ def api_remove_source():
     except OSError as exc:
         return jsonify({"error": str(exc)}), 400
 
-    if resolved == state.CONTENT_DIR:
+    if resolved == state.content_dir():
         return jsonify({"error": _("Cannot remove the active source")}), 400
 
     recents = load_recents()
@@ -282,7 +318,11 @@ def api_remove_source():
         except (ValueError, OSError):
             pass
         else:
-            shutil.rmtree(resolved, ignore_errors=True)
+            # Removal is per-client, but deleting the clone is not: another
+            # session may still have this repo in its recents (or be reading it
+            # right now). Drop the checkout only once nobody references it.
+            if target not in all_referenced_paths():
+                shutil.rmtree(resolved, ignore_errors=True)
 
     return jsonify({"recents": new_recents})
 
@@ -514,7 +554,7 @@ def api_upload_asset():
         i += 1
     target = doc_dir / candidate
     try:  # belt-and-suspenders: the written path must stay under CONTENT_DIR
-        target.resolve().relative_to(state.CONTENT_DIR)
+        target.resolve().relative_to(state.content_dir())
     except ValueError:
         abort(404)
     try:
@@ -539,7 +579,7 @@ def api_render():
         return jsonify({"error": _("file and content are required")}), 400
     if bare not in scan_markdown_files():
         return jsonify({"error": _("not found")}), 404
-    rel = safe_path(bare).relative_to(state.CONTENT_DIR)
+    rel = safe_path(bare).relative_to(state.content_dir())
     if rel.suffix.lower() == ".rst":
         html, toc = render_rst_source(rel, content)
     else:
@@ -598,6 +638,7 @@ from markwright.export import (
     _resolve_cover_tokens,
     _resolve_export_filename,
     _serialize_preset,
+    playwright_cookies,
 )
 
 
@@ -699,6 +740,12 @@ def export_pdf():
     if include_toc:
         index_kwargs["pdf_toc"] = "1"
     doc_url = request.url_root.rstrip("/") + url_for("index", **index_kwargs)
+    # The headless Chrome that fetches doc_url is a separate HTTP client with an
+    # empty cookie jar, so it would otherwise be served the *process-default*
+    # content dir rather than this session's — exporting a document from whatever
+    # source another browser last selected. Replaying this request's cookies into
+    # that profile makes the export resolve as the requesting client.
+    export_cookies = playwright_cookies(doc_url, request.cookies)
 
     # Cover page (preset-only — its content lives in the preset). Query param
     # wins, else the preset's stored flag. Built server-side (logo/image as data
@@ -736,7 +783,7 @@ def export_pdf():
             pdf_bytes = _render_pdf(
                 doc_url, header_template, footer_template, show_hf, page_format,
                 landscape, margin, font_scale, prepend_html, show_frontmatter,
-                font_family,
+                font_family, export_cookies,
             )
             break
         except Exception as exc:  # noqa: BLE001 - classified + logged below
@@ -857,7 +904,7 @@ def export_docx():
         # Pre-rendered mermaid PNGs + the cover image go in a temp dir that must
         # outlive the call.
         with tempfile.TemporaryDirectory() as img_dir:
-            resource_paths = [str(target.parent), str(state.CONTENT_DIR)]
+            resource_paths = [str(target.parent), str(state.content_dir())]
             wrote_any = False
             for name, data in mermaid_images.items():
                 (Path(img_dir) / name).write_bytes(data)

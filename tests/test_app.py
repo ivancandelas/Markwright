@@ -11,6 +11,11 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import app as appmod
+from markwright import config
+
+
+def _raise_oserror(*args, **kwargs):
+    raise OSError("read-only")
 
 
 # --------------------------------------------------------------------------- #
@@ -569,3 +574,82 @@ class TestRenderMarkdown:
         html_out, _ = appmod.render_markdown(p)
         assert '<div class="codehilite">' in html_out
         assert "<p></p>" not in html_out
+
+
+# --------------------------------------------------------------------------- #
+# Cookie replay into the PDF exporter's headless Chrome
+# --------------------------------------------------------------------------- #
+class TestPlaywrightCookies:
+    """The exporter's Chrome is a separate HTTP client with an empty jar; these
+    records are what make it resolve as the requesting session instead of the
+    process default. The attribute values are load-bearing, not incidental."""
+
+    URL = "http://127.0.0.1:5000/?file=doc.md"
+
+    def cookies(self, mapping=None, url=None):
+        return appmod.playwright_cookies(url or self.URL, mapping or {"session": "abc"})
+
+    def test_maps_name_value_and_host(self):
+        [cookie] = self.cookies()
+        assert cookie["name"] == "session"
+        assert cookie["value"] == "abc"
+        assert cookie["domain"] == "127.0.0.1"
+        assert cookie["path"] == "/"
+
+    def test_samesite_is_lax_not_none(self):
+        # sameSite=None is only honored with Secure; over plain http Chrome would
+        # reject the record outright and the export would silently lose the session.
+        assert self.cookies()[0]["sameSite"] == "Lax"
+
+    def test_not_marked_secure_so_it_survives_plain_http(self):
+        assert self.cookies()[0]["secure"] is False
+
+    def test_forwards_every_cookie(self):
+        names = {c["name"] for c in self.cookies({"session": "a", "lang": "es"})}
+        assert names == {"session", "lang"}  # lang too: the PDF renders in the user's locale
+
+    def test_empty_mapping_yields_no_cookies(self):
+        assert appmod.playwright_cookies(self.URL, {}) == []
+        assert appmod.playwright_cookies(self.URL, None) == []
+
+    def test_hostless_url_is_ignored(self):
+        assert appmod.playwright_cookies("not a url", {"session": "abc"}) == []
+
+    def test_hostname_excludes_the_port(self):
+        # Cookies are not port-scoped (RFC 6265); a "host:port" domain is invalid.
+        [cookie] = self.cookies(url="http://localhost:8000/")
+        assert cookie["domain"] == "localhost"
+
+
+# --------------------------------------------------------------------------- #
+# Session signing key
+# --------------------------------------------------------------------------- #
+class TestLoadSecretKey:
+    def test_env_var_wins(self, monkeypatch):
+        monkeypatch.setenv("MARKWRIGHT_SECRET_KEY", "from-env")
+        assert config.load_secret_key() == b"from-env"
+
+    def test_generated_key_is_persisted_and_stable(self, monkeypatch, tmp_path):
+        # Stability across calls is the point: a fresh key per process would void
+        # every session on each debug auto-reload, dropping clients back onto the
+        # process-default content dir.
+        monkeypatch.delenv("MARKWRIGHT_SECRET_KEY", raising=False)
+        monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+        monkeypatch.setattr(config, "SECRET_KEY_FILE", tmp_path / "secret_key")
+        first = config.load_secret_key()
+        assert first and config.load_secret_key() == first
+
+    def test_generated_key_is_not_world_readable(self, monkeypatch, tmp_path):
+        monkeypatch.delenv("MARKWRIGHT_SECRET_KEY", raising=False)
+        key_file = tmp_path / "secret_key"
+        monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+        monkeypatch.setattr(config, "SECRET_KEY_FILE", key_file)
+        config.load_secret_key()
+        assert oct(key_file.stat().st_mode & 0o777) == "0o600"
+
+    def test_unwritable_cache_still_returns_a_key(self, monkeypatch, tmp_path):
+        monkeypatch.delenv("MARKWRIGHT_SECRET_KEY", raising=False)
+        monkeypatch.setattr(config, "SECRET_KEY_FILE", tmp_path / "nope" / "secret_key")
+        monkeypatch.setattr(config, "CACHE_DIR", tmp_path / "nope")
+        monkeypatch.setattr(config.Path, "mkdir", _raise_oserror)
+        assert config.load_secret_key()  # ephemeral, but the app still boots

@@ -127,7 +127,7 @@
               <ul class="source-recents">
                 {% for r in recents %}
                   <li class="source-recent-row">
-                    <button class="source-recent" type="button" data-path="{{ r.path }}" title="{{ r.path }}">
+                    <button class="source-recent" type="button" data-path="{{ r.path }}" data-tooltip="{{ r.path }}{% if r.kind == 'git' and r.url %}&#10;{{ r.url }}{% endif %}">
                       <span class="source-recent-name">{{ r.label }}</span>
                       <span class="source-recent-kind">{{ r.kind }}</span>
                     </button>
@@ -569,6 +569,28 @@
               <div class="shortcut-row"><dt><kbd>Esc</kbd></dt><dd>{{ _('Exit editor') }}</dd></div>
             </dl>
           </section>
+          <section class="shortcuts-group shortcuts-group-wide">
+            <h3 class="shortcuts-group-title">{{ _('Alt shortcuts (hold Alt to see the badges)') }}</h3>
+            <dl class="shortcuts-list shortcuts-list-split">
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>E</kbd></dt><dd>{{ _('Edit document') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>S</kbd></dt><dd>{{ _('Toggle source view') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>F</kbd></dt><dd>{{ _('Filter files') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>H</kbd></dt><dd>{{ _('Filter headings') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>B</kbd></dt><dd>{{ _('Toggle sidebar') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>C</kbd></dt><dd>{{ _('Toggle table of contents') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>D</kbd></dt><dd>{{ _('Export (PDF / Word)') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>A</kbd></dt><dd>{{ _('File actions') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>M</kbd></dt><dd>{{ _('Bookmarks') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>O</kbd></dt><dd>{{ _('Open folder or repository') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>G</kbd></dt><dd>{{ _('Appearance settings') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>R</kbd></dt><dd>{{ _('Focus reading mode') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>I</kbd></dt><dd>{{ _('Toggle frontmatter panel') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>T</kbd></dt><dd>{{ _('Back to top') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>K</kbd></dt><dd>{{ _('Show this help') }}</dd></div>
+            </dl>
+            <p class="shortcuts-note">{{ _('Alt shortcuts work everywhere, including while typing or editing.') }}</p>
+          </section>
+
           <section class="shortcuts-group">
             <h3 class="shortcuts-group-title">{{ _('Diagram viewer') }}</h3>
             <dl class="shortcuts-list">

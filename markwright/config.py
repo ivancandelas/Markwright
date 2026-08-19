@@ -6,6 +6,7 @@ and defaults to ``~/.cache/markwright``.
 """
 import os
 import re
+import secrets
 import shutil
 from pathlib import Path
 
@@ -16,7 +17,13 @@ _LEGACY_CACHE_NAME = "md_viewer"
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "markwright"
 REPOS_DIR = CACHE_DIR / "repos"
 SOURCES_FILE = CACHE_DIR / "sources.json"
+SECRET_KEY_FILE = CACHE_DIR / "secret_key"
 RECENTS_LIMIT = 8
+# Recents buckets are kept per principal, and an anonymous principal is minted
+# per browser — so the map would grow without bound. Oldest-touched buckets are
+# evicted past this cap; the shared list survives eviction, so an evicted client
+# is reseeded from it rather than landing on an empty picker.
+PRINCIPALS_LIMIT = 50
 PRESETS_FILE = CACHE_DIR / "pdf_presets.json"
 LOGOS_DIR = CACHE_DIR / "pdf_logos"
 ALLOWED_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
@@ -46,6 +53,52 @@ ALLOWED_ASSET_EXTENSIONS = {
     ".ico",
     ".pdf",
 }
+
+
+def load_secret_key():
+    """Key that signs the session cookie (which carries the per-session content
+    dir). ``MARKWRIGHT_SECRET_KEY`` wins; otherwise a random key is generated
+    once and **persisted** to ``CACHE_DIR/secret_key`` at 0600.
+
+    Persisting matters more than it looks. A fresh random key per process would
+    invalidate every session on each restart — and debug mode auto-reloads on
+    every code edit — silently dropping clients back onto the process-default
+    directory, i.e. re-creating the exact bug the session layer exists to fix.
+
+    Never raises: a cache dir that can't be written falls back to an ephemeral
+    in-memory key (sessions last until restart) rather than refusing to boot.
+    """
+    from_env = os.environ.get("MARKWRIGHT_SECRET_KEY")
+    if from_env:
+        return from_env.encode("utf-8")
+
+    try:
+        if SECRET_KEY_FILE.is_file():
+            existing = SECRET_KEY_FILE.read_bytes().strip()
+            if existing:
+                return existing
+    except OSError:
+        pass
+
+    key = secrets.token_hex(32).encode("ascii")
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        # O_EXCL + mode: created 0600 from the start (no window where the key is
+        # world-readable) and a concurrent worker that won the race makes this
+        # raise rather than clobber its key — we then read theirs back.
+        fd = os.open(SECRET_KEY_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(key)
+    except FileExistsError:
+        try:
+            existing = SECRET_KEY_FILE.read_bytes().strip()
+            if existing:
+                return existing
+        except OSError:
+            pass
+    except OSError:
+        pass
+    return key
 
 
 def migrate_legacy_cache():

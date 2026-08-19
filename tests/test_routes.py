@@ -10,11 +10,13 @@ points the module-global CONTENT_DIR at an isolated tmp dir and restores it
 afterward — so none of these touch the user's real content or cache state
 except through monkeypatched seams.
 """
+import json
 from pathlib import Path
 
 import pytest
 
 import app as appmod
+from markwright import sources, state
 
 
 @pytest.fixture
@@ -144,6 +146,290 @@ class TestSources:
         r = client.get("/")
         assert b"only-here.md" in r.data
         assert b"hello.md" not in r.data
+
+
+class TestSessionScopedSource:
+    """The multi-client bug: CONTENT_DIR used to be one process global, so the
+    last browser to switch sources switched them for *everyone* — browser A
+    pressing F5 would suddenly be served browser B's tree. The active source now
+    rides the signed session cookie; these pin that down.
+
+    ``record_recent`` is stubbed out throughout: the recents list still lives in
+    the real user cache, and switching sources for real would write to it.
+    """
+
+    @pytest.fixture
+    def other_root(self, tmp_path_factory):
+        # A *sibling* of the content_dir fixture's tree, not a child: nested under
+        # it, its files would show up in the other session's scan and the
+        # isolation assertions would pass or fail for the wrong reason.
+        other = tmp_path_factory.mktemp("source_b")
+        (other / "only-in-b.md").write_text("# Only In B\n", encoding="utf-8")
+        return other
+
+    @pytest.fixture(autouse=True)
+    def _no_recents_writes(self, monkeypatch):
+        monkeypatch.setattr(appmod, "record_recent", lambda entry: [])
+
+    def switch(self, cli, path):
+        r = cli.post("/api/source", json={"source": str(path)})
+        assert r.status_code == 200, r.get_json()
+        return r
+
+    def test_switch_does_not_leak_to_another_session(self, client, content_dir, other_root):
+        """The reported bug, verbatim: two browsers, two sources, one server."""
+        browser_a = client
+        browser_b = appmod.app.test_client()
+
+        assert b"hello.md" in browser_a.get("/").data          # A starts on the default
+        self.switch(browser_b, other_root)                     # B switches away
+
+        reloaded = browser_a.get("/").data                     # A presses F5
+        assert b"hello.md" in reloaded
+        assert b"only-in-b.md" not in reloaded
+
+    def test_switched_session_keeps_its_source_across_requests(self, client, other_root):
+        self.switch(client, other_root)
+        for _ in range(2):  # the override must persist, not just apply once
+            body = client.get("/").data
+            assert b"only-in-b.md" in body
+            assert b"hello.md" not in body
+
+    def test_switch_leaves_the_process_default_alone(self, client, content_dir, other_root):
+        """A session override must not write through to the process default —
+        that's what a fresh client (and the next server start) is served."""
+        self.switch(client, other_root)
+        assert state.CONTENT_DIR == Path(content_dir)
+        assert b"hello.md" in appmod.app.test_client().get("/").data
+
+    def test_api_sources_reports_the_callers_dir(self, client, other_root):
+        self.switch(client, other_root)
+        assert client.get("/api/sources").get_json()["content_dir"] == str(other_root)
+        fresh = appmod.app.test_client()
+        assert fresh.get("/api/sources").get_json()["content_dir"] == str(state.CONTENT_DIR)
+
+    def test_session_survives_a_vanished_dir(self, client, other_root):
+        """A remembered source can be deleted between requests; fall back to the
+        process default rather than serving a directory that no longer exists."""
+        self.switch(client, other_root)
+        (other_root / "only-in-b.md").unlink()
+        other_root.rmdir()
+        r = client.get("/")
+        assert r.status_code == 200
+        assert b"hello.md" in r.data
+
+    def test_asset_route_is_session_scoped(self, client, content_dir, other_root):
+        """Subresources resolve through the session too — this is why the PDF
+        exporter has to replay cookies rather than pass a URL token."""
+        (content_dir / "a.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        (other_root / "b.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        assert client.get("/asset/a.png").status_code == 200
+        assert client.get("/asset/b.png").status_code == 404
+        self.switch(client, other_root)
+        assert client.get("/asset/b.png").status_code == 200
+        assert client.get("/asset/a.png").status_code == 404
+
+    def test_principal_is_minted_once_and_reused(self, client):
+        with client.session_transaction() as sess:
+            sess.clear()
+        client.get("/")
+        with client.session_transaction() as sess:
+            first = sess.get("sid")
+        assert first
+        client.get("/")
+        with client.session_transaction() as sess:
+            assert sess.get("sid") == first
+
+
+class TestPerPrincipalRecents:
+    """Recents used to be one shared list, so one client's source history (and
+    its per-path last_file) was everyone's. Buckets are now keyed by principal,
+    with a shared list kept as the boot-time and new-client fallback.
+
+    These write recents for real (into conftest's isolated store), unlike
+    TestSessionScopedSource which stubs record_recent out.
+    """
+
+    @pytest.fixture
+    def store(self, isolated_sources_store):
+        return isolated_sources_store
+
+    @pytest.fixture
+    def roots(self, tmp_path_factory):
+        made = []
+        for name in ("source_x", "source_y"):
+            root = tmp_path_factory.mktemp(name)
+            (root / f"{name}.md").write_text(f"# {name}\n", encoding="utf-8")
+            made.append(root)
+        return made
+
+    def switch(self, cli, path):
+        r = cli.post("/api/source", json={"source": str(path)})
+        assert r.status_code == 200, r.get_json()
+        return r.get_json()["recents"]
+
+    def paths(self, cli):
+        return [r["path"] for r in cli.get("/api/sources").get_json()["recents"]]
+
+    def sid(self, cli):
+        with cli.session_transaction() as sess:
+            return sess["sid"]
+
+    def test_history_does_not_leak_between_clients(self, client, roots):
+        """Once two clients have diverged, neither sees the other's later moves."""
+        x, y = roots
+        browser_b = appmod.app.test_client()
+        self.switch(client, x)
+        self.switch(browser_b, y)
+        assert self.paths(client) == [str(x)]        # B's switch is invisible to A
+        assert self.paths(browser_b)[0] == str(y)    # B's own move leads its list
+
+    def test_a_new_client_inherits_history_once_then_diverges(self, client, roots):
+        """Deliberate, not incidental: a client with no bucket is seeded from the
+        shared list, so B's first switch lands on top of A's history rather than
+        wiping the picker. Inheritance happens exactly once — after that the
+        buckets are independent (see the divergence tests). This is the seam to
+        revisit at login: an authenticated user should not inherit another's
+        history, whereas one person's second browser should."""
+        x, y = roots
+        self.switch(client, x)
+        browser_b = appmod.app.test_client()
+        assert self.switch(browser_b, y) == [
+            {"label": y.name, "path": str(y), "kind": "local"},
+            {"label": x.name, "path": str(x), "kind": "local"},
+        ]
+
+    def test_new_client_is_seeded_from_the_shared_list(self, client, roots):
+        """A first-time browser opens on a populated picker, not an empty one —
+        which is what the shared list exists for."""
+        x, _ = roots
+        self.switch(client, x)
+        assert str(x) in self.paths(appmod.app.test_client())
+
+    def test_seeding_is_a_copy_not_an_alias(self, client, roots):
+        """A seeded client must not be writing into the shared list by reference."""
+        x, y = roots
+        self.switch(client, x)
+        fresh = appmod.app.test_client()
+        self.paths(fresh)          # seed it
+        self.switch(fresh, y)      # then diverge
+        assert self.paths(client) == [str(x)]
+
+    def test_removal_is_per_client(self, client, roots):
+        x, y = roots
+        browser_b = appmod.app.test_client()
+        self.switch(client, x)
+        self.switch(browser_b, y)
+        self.switch(browser_b, x)  # B now knows both
+        client.post("/api/source/remove", json={"path": str(x)})
+        assert str(x) in self.paths(browser_b)
+
+    def test_last_file_is_per_client(self, client, content_dir, roots):
+        """Two clients on the same source, reading different docs, must not
+        overwrite each other's resume point."""
+        (content_dir / "second.md").write_text("# Second\n", encoding="utf-8")
+        browser_b = appmod.app.test_client()
+        for cli in (client, browser_b):
+            self.switch(cli, content_dir)
+        client.get("/?file=hello.md")
+        browser_b.get("/?file=second.md")
+        assert b"<h1 id=\"hello\">Hello</h1>" in client.get("/").data
+        assert b"<h1 id=\"second\">Second</h1>" in browser_b.get("/").data
+
+    def test_a_passive_client_is_not_dragged_by_an_active_one(self, client, content_dir, store):
+        """Regression, found in a live two-browser run. Seeding used to happen
+        lazily on first write, so a client that only ever *read* never
+        materialized a bucket and kept resolving through the shared list — its
+        resume point silently followed whatever the other client last opened.
+        The passive client below writes *nothing*: its whole state comes from the
+        seed, which is precisely the case lazy seeding never materialized."""
+        (content_dir / "second.md").write_text("# Second\n", encoding="utf-8")
+        active = client
+        self.switch(active, content_dir)
+        active.get("/?file=hello.md")          # shared list now resumes at hello.md
+
+        passive = appmod.app.test_client()     # minted from exactly that state
+        assert b"<h1 id=\"hello\">Hello</h1>" in passive.get("/").data
+
+        active.get("/?file=second.md")         # the active client moves on
+        assert b"<h1 id=\"hello\">Hello</h1>" in passive.get("/").data
+
+    def test_every_client_owns_a_bucket_from_its_first_request(self, client, store):
+        client.get("/")
+        buckets = json.loads(store.read_text(encoding="utf-8"))["principals"]
+        assert self.sid(client) in buckets
+
+    def test_startup_resume_reads_the_shared_list(self, client, roots):
+        """resolve_startup_dir runs with no request and no principal, so it must
+        still find something — the shared list mirrors the latest writer."""
+        x, _ = roots
+        self.switch(client, x)
+        assert sources.resolve_startup_dir(None) == str(x)
+
+    def test_all_referenced_paths_unions_every_bucket(self, client, roots):
+        x, y = roots
+        browser_b = appmod.app.test_client()
+        self.switch(client, x)
+        self.switch(browser_b, y)
+        assert {str(x), str(y)} <= sources.all_referenced_paths()
+
+    def test_principal_buckets_are_capped(self, client, roots, monkeypatch):
+        monkeypatch.setattr(sources, "PRINCIPALS_LIMIT", 3)
+        x, _ = roots
+        for _ in range(6):
+            self.switch(appmod.app.test_client(), x)
+        saved = json.loads((sources.SOURCES_FILE).read_text(encoding="utf-8"))
+        assert len(saved["principals"]) <= 3
+        assert saved["recents"], "the shared list must survive eviction"
+
+    def test_legacy_file_without_principals_still_loads(self, store, client):
+        store.write_text(json.dumps({"recents": [{"path": "/old", "label": "old"}]}),
+                         encoding="utf-8")
+        assert "/old" in self.paths(client)  # seeded from the pre-buckets shape
+
+
+class TestCloneDeletionGuard:
+    """Removing a git source deletes its checkout. With per-client recents that
+    became a cross-client hazard: one client's removal would rmtree a clone
+    another client still has listed (or is reading right now)."""
+
+    @pytest.fixture
+    def repos(self, monkeypatch, tmp_path_factory):
+        cache = tmp_path_factory.mktemp("cache")
+        repos_dir = cache / "repos"
+        (repos_dir / "shared-repo").mkdir(parents=True)
+        (repos_dir / "shared-repo" / "readme.md").write_text("# Repo\n", encoding="utf-8")
+        monkeypatch.setattr(sources, "CACHE_DIR", cache)
+        monkeypatch.setattr(sources, "SOURCES_FILE", cache / "sources.json")
+        monkeypatch.setattr(sources, "REPOS_DIR", repos_dir)
+        monkeypatch.setattr(appmod, "REPOS_DIR", repos_dir)
+        return repos_dir / "shared-repo"
+
+    def seed(self, clients, clone):
+        """Give each client a recents bucket holding the same git clone."""
+        entry = {"label": "shared-repo", "path": str(clone), "kind": "git",
+                 "url": "https://example.invalid/shared-repo.git"}
+        buckets = {}
+        for cli in clients:
+            cli.get("/")  # mint the principal
+            with cli.session_transaction() as sess:
+                buckets[sess["sid"]] = {"recents": [dict(entry)], "updated": 1.0}
+        sources.SOURCES_FILE.write_text(
+            json.dumps({"recents": [dict(entry)], "principals": buckets}), encoding="utf-8")
+        return entry
+
+    def test_clone_survives_while_another_client_references_it(self, client, repos):
+        browser_b = appmod.app.test_client()
+        entry = self.seed([client, browser_b], repos)
+        r = client.post("/api/source/remove", json={"path": entry["path"]})
+        assert r.status_code == 200
+        assert repos.is_dir(), "B still lists this clone — it must not be deleted"
+
+    def test_clone_is_deleted_once_nobody_references_it(self, client, repos):
+        entry = self.seed([client], repos)
+        r = client.post("/api/source/remove", json={"path": entry["path"]})
+        assert r.status_code == 200
+        assert not repos.exists()
 
 
 class TestPresets:
