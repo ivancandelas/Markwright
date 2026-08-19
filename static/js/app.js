@@ -1351,14 +1351,16 @@
       bookmarkFab.title = t("Bookmarks");
       bookmarkFab.setAttribute("aria-label", t("Bookmarks"));
       bookmarkFab.setAttribute("aria-expanded", "false");
-      bookmarkFab.hidden = true;
       document.body.appendChild(bookmarkFab);
 
+      // Always on screen — it's the only bookmark control that doesn't scroll
+      // away, so it shouldn't need 400px of scrolling to show up. It does move:
+      // it normally stacks above the back-to-top FAB, which only appears past
+      // 400px, so below that it drops into the free slot instead of hovering
+      // over a gap.
       function onFabScroll() {
         const y = isMobile() ? window.scrollY : contentPanel.scrollTop;
-        // Keep the button while its floating panel is open even if scrolled back up.
-        const open = bookmarkPopover.classList.contains("is-floating") && !bookmarkPopover.hidden;
-        bookmarkFab.hidden = y < 400 && !open;
+        bookmarkFab.classList.toggle("is-low", y < 400);
       }
       contentPanel.addEventListener("scroll", onFabScroll, { passive: true });
       window.addEventListener("scroll", onFabScroll, { passive: true });

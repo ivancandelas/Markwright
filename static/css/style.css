@@ -2272,8 +2272,9 @@ body.editor-fs-lock {
   display: none;
 }
 
-/* Floating "bookmark this spot" button — sits just above the back-to-top FAB
-   so position-bookmarking stays reachable after the header scrolls away. */
+/* Floating bookmarks button — always on screen (the header 🔖 scrolls away with
+   the document), stacked just above the back-to-top FAB; .is-low takes that
+   FAB's slot while it is hidden near the top of the document. */
 .bookmark-fab {
   position: fixed;
   right: 22px;
@@ -2291,10 +2292,13 @@ body.editor-fs-lock {
   color: var(--text);
   cursor: pointer;
   box-shadow: var(--shadow);
-  /* Reliable long-press: don't let touch start a scroll/gesture on the button. */
-  touch-action: none;
+  transition: bottom 0.15s ease;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.bookmark-fab.is-low {
+  bottom: 22px;
 }
 
 .bookmark-fab:hover {
@@ -2307,10 +2311,6 @@ body.editor-fs-lock {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft);
-}
-
-.bookmark-fab[hidden] {
-  display: none;
 }
 
 /* Hide the bookmark FAB in focus reading mode, like the back-to-top button. */
