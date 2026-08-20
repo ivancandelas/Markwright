@@ -1537,10 +1537,35 @@
   let searchMode = "name";
   let searchTimer = null;
   let searchSeq = 0;
+  // Clicking a result is a full page load, which used to wipe the query out of
+  // the box — you had to retype the word to search again. The query, the mode
+  // and the last payload ride along in sessionStorage (per tab, gone when it
+  // closes) and are restored below; the payload also repaints the panel
+  // instantly, before the refresh request comes back.
+  const searchStateKey = "markwright-search";
+  let searchData = null;
 
-  function fileUrl(path, query) {
+  function saveSearchState() {
+    try {
+      const query = searchInput.value.trim();
+      if (!query) { sessionStorage.removeItem(searchStateKey); return; }
+      sessionStorage.setItem(searchStateKey, JSON.stringify({
+        mode: searchMode,
+        query: query,
+        data: searchMode === "content" ? searchData : null,
+      }));
+    } catch (_) { /* private mode / quota: the box just won't survive the jump */ }
+  }
+
+  // `extra` carries the clicked snippet's context (`qc` = snippet text, `qp` =
+  // the hit's offset inside it, `qi` = its ordinal in the file) so the target
+  // page can scroll to *that* occurrence instead of the document's first one.
+  function fileUrl(path, query, extra) {
     const params = new URLSearchParams({ file: path });
     if (query) params.set("q", query);
+    if (extra) {
+      Object.keys(extra).forEach(function (k) { params.set(k, String(extra[k])); });
+    }
     return location.pathname + "?" + params.toString();
   }
 
@@ -1580,10 +1605,10 @@
       name.appendChild(badge);
       group.appendChild(name);
 
-      r.matches.forEach(function (m) {
+      r.matches.forEach(function (m, i) {
         const snip = document.createElement("a");
         snip.className = "search-result-snippet";
-        snip.href = fileUrl(r.path, data.query);
+        snip.href = fileUrl(r.path, data.query, { qc: m.text, qp: m.match_start, qi: i });
         const start = m.match_start;
         const len = m.match_len;
         snip.appendChild(document.createTextNode(m.text.slice(0, start)));
@@ -1591,40 +1616,79 @@
         mark.textContent = m.text.slice(start, start + len);
         snip.appendChild(mark);
         snip.appendChild(document.createTextNode(m.text.slice(start + len)));
+        snip.dataset.path = r.path;
+        snip.dataset.index = String(i);
+        // A result inside the document already open needs no page load at all:
+        // re-run the jump in place. That's the difference between an instant
+        // move and a full server render + reload.
+        snip.addEventListener("click", function (event) {
+          if (r.path !== selectedPath || event.button !== 0 ||
+              event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+          }
+          event.preventDefault();
+          history.replaceState(null, "", snip.getAttribute("href"));
+          clearSearchHighlight();
+          highlightSearchQuery("smooth");
+          markCurrentResult();
+        });
         group.appendChild(snip);
       });
       searchResults.appendChild(group);
     });
+    markCurrentResult();
   }
 
-  async function runContentSearch(query) {
+  // Flags the snippet the document is currently positioned at, so coming back
+  // to the panel after a jump shows where you were.
+  function markCurrentResult() {
+    const params = new URLSearchParams(location.search);
+    const file = params.get("file") || "";
+    const index = params.get("qi");
+    searchResults.querySelectorAll(".search-result-snippet").forEach(function (el) {
+      el.classList.toggle("is-current", el.dataset.path === file && el.dataset.index === index);
+    });
+  }
+
+  // `quiet` keeps already-painted (restored) results on screen while the
+  // refresh is in flight, instead of blanking them to a "Searching…" status.
+  async function runContentSearch(query, quiet) {
     if (query.length < 2) {
+      searchData = null;
       setStatus(t("Type at least 2 characters to search file contents."));
       return;
     }
     const seq = ++searchSeq;
-    setStatus(t("Searching…"));
+    if (!quiet) setStatus(t("Searching…"));
     try {
       const res = await fetch("/api/search?q=" + encodeURIComponent(query), { cache: "no-store" });
       if (!res.ok) throw new Error("http " + res.status);
       const data = await res.json();
       if (seq !== searchSeq) return;  // a newer query superseded this one
+      searchData = data;
       renderSearchResults(data);
+      saveSearchState();
     } catch (_) {
       if (seq !== searchSeq) return;
-      setStatus(t("Search failed."));
+      if (!quiet) setStatus(t("Search failed."));
     }
+  }
+
+  function reflectSearchMode() {
+    searchModeButtons.forEach(function (btn) {
+      const on = btn.dataset.mode === searchMode;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    searchInput.placeholder = searchMode === "content"
+      ? t("Search in files...")
+      : t("Filter files...");
   }
 
   function setSearchMode(mode) {
     if (mode === searchMode) return;
     searchMode = mode;
-    searchModeButtons.forEach(function (btn) {
-      const on = btn.dataset.mode === mode;
-      btn.classList.toggle("is-active", on);
-      btn.setAttribute("aria-pressed", on ? "true" : "false");
-    });
-    searchInput.placeholder = mode === "content" ? t("Search in files...") : t("Filter files...");
+    reflectSearchMode();
     const query = searchInput.value.trim();
     if (mode === "content") {
       applyNameFilter("");          // restore the full tree under the results
@@ -1635,6 +1699,7 @@
       if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
       applyNameFilter(query.toLowerCase());
     }
+    saveSearchState();
   }
 
   searchModeButtons.forEach(function (btn) {
@@ -1645,11 +1710,36 @@
     const query = searchInput.value.trim();
     if (searchMode === "name") {
       applyNameFilter(query.toLowerCase());
+      saveSearchState();
       return;
     }
+    saveSearchState();
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = setTimeout(function () { runContentSearch(query); }, 200);
   });
+
+  (function restoreSearchState() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(searchStateKey) || "null"); } catch (_) {}
+    const urlQuery = (new URLSearchParams(location.search).get("q") || "").trim();
+    const query = (saved && saved.query) || urlQuery;
+    if (!query) return;
+    searchInput.value = query;
+    const mode = (saved && saved.mode) || (urlQuery ? "content" : "name");
+    if (mode !== "content") {
+      applyNameFilter(query.toLowerCase());
+      return;
+    }
+    searchMode = "content";
+    reflectSearchMode();
+    searchResults.hidden = false;
+    const cached = saved && saved.data && saved.data.query === query ? saved.data : null;
+    if (cached) {
+      searchData = cached;
+      renderSearchResults(cached);   // instant repaint; the fetch below refreshes it
+    }
+    runContentSearch(query, Boolean(cached));
+  })();
 
   const diagramOverlay = document.getElementById("diagram-overlay");
   const diagramStage = document.getElementById("diagram-overlay-stage");
@@ -3613,12 +3703,121 @@
     localStorage.setItem(contentScrollKey, String(contentPanel.scrollTop || window.scrollY));
   });
 
-  // Wraps every occurrence of the `?q=` query in the rendered document with
-  // <mark class="search-hit"> (skipping <pre>/<code>/scripts) and scrolls the
-  // first hit into view. Returns true when it scrolled, so the saved-scroll
-  // restore below can yield to it. Triggered by clicking a content-search
-  // result, which navigates here with &q=…
-  function highlightSearchQuery() {
+  // --- Search-result jump + highlight --------------------------------------
+  // Clicking a content-search result navigates here with `&q=` (the query) and,
+  // for a snippet, `&qc/&qp/&qi` (the clicked line's context). Every occurrence
+  // of the query is wrapped in <mark class="search-hit">; the one the snippet
+  // came from gets `is-active-hit` and is scrolled into view. The yellow paint
+  // can be switched off (the jump still works) via the header toggle.
+
+  // Accent-insensitive fold that also drops markdown punctuation, so a rendered
+  // "**Módulo**" and its raw source line compare equal. Unicode letter/number
+  // classes keep non-latin scripts intact.
+  function foldForMatch(text) {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Text preceding / following a <mark> inside its nearest block ancestor.
+  function markContext(mark) {
+    const block = mark.closest("p, li, h1, h2, h3, h4, h5, h6, td, th, dd, dt, blockquote") ||
+      mark.parentElement;
+    if (!block) return { before: "", after: "" };
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    const target = mark.firstChild;
+    let before = "";
+    let after = "";
+    let seen = false;
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node === target) { seen = true; continue; }
+      if (seen) after += node.nodeValue; else before += node.nodeValue;
+    }
+    return { before, after };
+  }
+
+  function commonPrefix(a, b) {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+    return i;
+  }
+
+  function commonSuffix(a, b) {
+    let i = 0;
+    while (i < a.length && i < b.length && a[a.length - 1 - i] === b[b.length - 1 - i]) i += 1;
+    return i;
+  }
+
+  // Which of the wrapped hits the clicked snippet refers to. Scores each hit by
+  // how much of the snippet's before/after context it reproduces; falls back to
+  // the snippet's ordinal (`qi`) when nothing matches (rendered text can differ
+  // from source, e.g. a hit inside a code fence is never wrapped), then to the
+  // first hit.
+  function pickHitIndex(hits, params, needleLen) {
+    const ctx = params.get("qc") || "";
+    const pos = Number(params.get("qp"));
+    if (ctx && Number.isFinite(pos) && pos >= 0) {
+      const wantBefore = foldForMatch(ctx.slice(0, pos).replace(/^…/, ""));
+      const wantAfter = foldForMatch(ctx.slice(pos + needleLen).replace(/…$/, ""));
+      let bestIndex = -1;
+      let bestScore = 0;
+      hits.forEach(function (mark, i) {
+        const around = markContext(mark);
+        const score = commonSuffix(wantBefore, foldForMatch(around.before)) +
+          commonPrefix(wantAfter, foldForMatch(around.after));
+        if (score > bestScore) { bestScore = score; bestIndex = i; }
+      });
+      if (bestIndex !== -1) return bestIndex;
+    }
+    const ordinal = Number(params.get("qi"));
+    if (Number.isInteger(ordinal) && ordinal >= 0 && ordinal < hits.length) return ordinal;
+    return 0;
+  }
+
+  // The highlight is a preference, not a mode: hits are always wrapped (the
+  // jump needs them), a body class only decides whether they are painted.
+  const searchHighlightKey = "markwright-search-highlight";
+  const searchHighlightOn = () => localStorage.getItem(searchHighlightKey) !== "off";
+
+  function setupSearchHighlightToggle(body) {
+    const btn = document.getElementById("search-highlight-toggle");
+    function reflect() {
+      const on = searchHighlightOn();
+      body.classList.toggle("no-search-highlight", !on);
+      if (!btn) return;
+      btn.hidden = false;
+      btn.setAttribute("aria-pressed", String(on));
+      btn.title = on ? t("Search highlight: on") : t("Search highlight: off");
+    }
+    if (btn && !btn.dataset.wired) {
+      btn.dataset.wired = "1";
+      btn.addEventListener("click", function () {
+        localStorage.setItem(searchHighlightKey, searchHighlightOn() ? "off" : "on");
+        reflect();
+      });
+    }
+    reflect();
+  }
+
+  // Undoes a previous pass so a new query (or a new target) can be wrapped from
+  // clean text — used by the in-page re-jump when a result points at the
+  // document already open.
+  function clearSearchHighlight() {
+    const body = document.querySelector(".markdown-body");
+    if (!body) return;
+    body.querySelectorAll("mark.search-hit").forEach(function (mark) {
+      mark.parentNode.replaceChild(document.createTextNode(mark.textContent), mark);
+    });
+    body.normalize();  // re-merge the split text nodes so the next walk sees whole strings
+  }
+
+  // Returns true when it scrolled, so the saved-scroll restore below yields.
+  function highlightSearchQuery(behavior) {
     const q = (new URLSearchParams(location.search).get("q") || "").trim();
     if (q.length < 2) return false;
     const body = document.querySelector(".markdown-body");
@@ -3630,8 +3829,12 @@
           return NodeFilter.FILTER_REJECT;
         }
         const p = node.parentNode;
+        // Code spans/blocks *are* wrapped: /api/search scans raw source, so a
+        // hit inside a fence needs a target here or clicking its snippet would
+        // scroll to some unrelated paragraph. A `pre.mermaid` is excluded — its
+        // text is the diagram source the client renderer is about to consume.
         if (!p || p.nodeName === "SCRIPT" || p.nodeName === "STYLE" ||
-            (p.closest && p.closest("pre, code, mark"))) {
+            (p.closest && p.closest("mark, pre.mermaid"))) {
           return NodeFilter.FILTER_REJECT;
         }
         return NodeFilter.FILTER_ACCEPT;
@@ -3641,7 +3844,7 @@
     let node;
     while ((node = walker.nextNode())) targets.push(node);
 
-    let first = null;
+    const hits = [];
     targets.forEach(function (text) {
       const value = text.nodeValue;
       const lower = value.toLowerCase();
@@ -3653,7 +3856,7 @@
         const mark = document.createElement("mark");
         mark.className = "search-hit";
         mark.textContent = value.slice(idx, idx + needle.length);
-        if (!first) { first = mark; mark.classList.add("is-active-hit"); }
+        hits.push(mark);
         frag.appendChild(mark);
         pos = idx + needle.length;
         idx = lower.indexOf(needle, pos);
@@ -3662,17 +3865,29 @@
       text.parentNode.replaceChild(frag, text);
     });
 
-    if (first) {
-      first.scrollIntoView({ block: "center" });
-      return true;
-    }
-    return false;
+    if (!hits.length) return false;
+    setupSearchHighlightToggle(body);
+    const target = hits[pickHitIndex(hits, new URLSearchParams(location.search), needle.length)] || hits[0];
+    target.classList.add("is-active-hit");
+    target.scrollIntoView({ block: "center", behavior: behavior || "auto" });
+    return true;
   }
+
+  // Positioning deliberately does NOT wait for `load`: that fires only once
+  // every image and the mermaid CDN module have settled, which is what made a
+  // search jump feel sluggish. app.js is a classic script at the end of <body>,
+  // so the document is already parsed here and the jump lands immediately.
+  const jumpedToSearchHit = highlightSearchQuery();
 
   window.addEventListener("load", function () {
     sidebar.scrollTop = Number(localStorage.getItem(sidebarScrollKey) || 0);
     // A search-result jump (&q=…) wins over the saved per-file scroll position.
-    if (highlightSearchQuery()) return;
+    // Re-anchor: a late image or diagram above the hit will have shifted it.
+    if (jumpedToSearchHit) {
+      const active = document.querySelector("mark.search-hit.is-active-hit");
+      if (active) active.scrollIntoView({ block: "center" });
+      return;
+    }
     const savedContentScroll = Number(localStorage.getItem(contentScrollKey) || 0);
     if (window.matchMedia("(max-width: 820px)").matches) {
       window.scrollTo({ top: savedContentScroll, behavior: "auto" });

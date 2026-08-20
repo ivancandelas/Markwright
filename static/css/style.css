@@ -931,6 +931,13 @@ a {
   color: var(--text);
 }
 
+/* The snippet the document is currently positioned at. */
+.search-result-snippet.is-current {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
 .search-result-snippet mark,
 .markdown-body mark.search-hit {
   background: var(--mark-bg, #fde68a);
@@ -941,6 +948,15 @@ a {
 
 .markdown-body mark.search-hit.is-active-hit {
   background: var(--mark-active-bg, #fbbf24);
+}
+
+/* Highlight switched off (#search-highlight-toggle): the hits stay wrapped so
+   the jump to a search result still works, they just aren't painted. */
+.markdown-body.no-search-highlight mark.search-hit,
+.markdown-body.no-search-highlight mark.search-hit.is-active-hit {
+  background: transparent;
+  color: inherit;
+  padding: 0;
 }
 
 .tree-controls {
@@ -1377,6 +1393,7 @@ a {
 
 .source-view-toggle[aria-pressed="true"],
 .edit-toggle[aria-pressed="true"],
+.search-highlight-toggle[aria-pressed="true"],
 .task-autosave-toggle[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--accent);
@@ -1385,6 +1402,10 @@ a {
 
 /* Auto-save off: a muted, "disarmed" look so it's clear clicks won't persist. */
 .task-autosave-toggle[aria-pressed="false"] {
+  opacity: 0.6;
+}
+
+.search-highlight-toggle[aria-pressed="false"] {
   opacity: 0.6;
 }
 

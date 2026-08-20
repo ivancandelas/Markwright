@@ -18,10 +18,10 @@ Static assets are **cache-busted**: the `asset_url(filename)` helper (`inject_as
 
 Tests live in `tests/` (pytest, config in `pytest.ini`). Install with `uv pip install -r requirements-dev.txt`, run with `.venv/bin/python -m pytest`. Two files:
 
-- **`tests/test_app.py`** — the **pure helpers**: frontmatter extraction, token resolvers (`_apply_datetime_tokens`, `_apply_frontmatter_tokens`, `_resolve_cover_tokens`, `_parse_fallback_values`, `_fm_scalar`), filename/Content-Disposition (`_resolve_export_filename`, `_content_disposition`), `safe_path` traversal guard, `sanitize_html`, `build_tree`/`scan_markdown_files`, margins, `_hf_markdown`, `_extract_doc_title`, and a `render_markdown` smoke test. These now live in `markwright/` but tests reference them as `appmod.<helper>` via `app.py`'s re-export surface, so they don't care which module a helper landed in.
-- **`tests/test_routes.py`** — a broad/shallow **route oracle** (Flask test client): status codes, redirects, content markers for `/`, `/raw`, `/asset`, `/favicon.ico`, `/api/mtime`, `/api/sources`, `/api/pdf-presets`, runtime source-switch, and the docx-missing-pandoc 503 path. Exercises wiring without external binaries. The full Chrome/pandoc pipelines (`_render_pdf`/`_render_docx`) need a live server + binaries and are verified manually, not in CI.
+- **`tests/test_app.py`** — the **pure helpers**: frontmatter extraction, token resolvers (`_apply_datetime_tokens`, `_apply_frontmatter_tokens`, `_resolve_cover_tokens`, `_parse_fallback_values`, `_fm_scalar`), filename/Content-Disposition (`_resolve_export_filename`, `_content_disposition`), `safe_path` traversal guard, `sanitize_html`, `build_tree`/`scan_markdown_files`, margins, `_hf_markdown`, `_extract_doc_title`, and a `render_markdown` smoke test, plus `playwright_cookies` (the export cookie-replay records) and `load_secret_key`. These now live in `markwright/` but tests reference them as `appmod.<helper>` via `app.py`'s re-export surface, so they don't care which module a helper landed in.
+- **`tests/test_routes.py`** — a broad/shallow **route oracle** (Flask test client): status codes, redirects, content markers for `/`, `/raw`, `/asset`, `/favicon.ico`, `/api/mtime`, `/api/sources`, `/api/pdf-presets`, runtime source-switch, and the docx-missing-pandoc 503 path. `TestSessionScopedSource`, `TestPerPrincipalRecents` and `TestCloneDeletionGuard` are the multi-client regression suites — two `test_client()`s are two independent cookie jars, i.e. two browsers. Exercises wiring without external binaries. The full Chrome/pandoc pipelines (`_render_pdf`/`_render_docx`) need a live server + binaries and are verified manually, not in CI.
 
-The `content_dir` fixture (`tests/conftest.py`) swaps `markwright.state.CONTENT_DIR` to a `tmp_path` and restores it after.
+The `content_dir` fixture (`tests/conftest.py`) swaps `markwright.state.CONTENT_DIR` to a `tmp_path` and restores it after. It runs outside a request context, so it moves the **process default** — which is what a test client with no session override is served, so tests read as before the session layer landed. A second, **autouse** `isolated_sources_store` fixture redirects `sources.json` into a throwaway cache for *every* test: minting a principal now seeds a recents bucket, so any test touching the test client writes to that file.
 
 Install deps with `uv pip install -r requirements.txt` (preferred). The repo uses a `uv`-managed venv with **no `pip` inside it** — use `uv pip ...`, not `.venv/bin/pip`. Runtime stack is pinned: Flask 3.0.3, Markdown 3.6, bleach 6.1.0, Pygments 2.18.0, docutils 0.21.2 (RST), PyYAML 6.0.2, emoji 2.15.0 (`:shortcode:` → glyph; soft-imported), Flask-Babel 4.0.0 (i18n), playwright 1.60.0 (PDF; drives system Chrome via `channel="chrome"`, no Chromium download — but a Chrome/Chromium install is required for export). DOCX export shells out to the system **`pandoc`** binary (not a pip dep; `/export/docx` → 503 if missing).
 
@@ -30,19 +30,19 @@ Install deps with `uv pip install -r requirements.txt` (preferred). The repo use
 Flask app whose web layer (the `Flask` object, all `@app.route` handlers, Babel/i18n wiring, context processors, template filters, CLI `__main__`) lives in **`app.py`**; supporting logic is extracted into the **`markwright/` package**. Tests still `import app as appmod`; `app.py` re-imports the moved helpers so `appmod.<helper>` keeps resolving (a deliberate re-export surface).
 
 `markwright/` modules:
-- **`state.py`** — the single mutable global `CONTENT_DIR`. Read it **only** as `state.CONTENT_DIR` (attribute access) so the runtime source-swap is visible across modules; never `from state import CONTENT_DIR` (freezes a stale binding).
-- **`config.py`** — static constants: cache/preset layout, asset/logo allowlists, git-URL prefixes, `IGNORED_DIRS`.
+- **`state.py`** — the active content dir, in **two layers**: the process default (`CONTENT_DIR`, chosen at startup) and a per-session override living in the signed session cookie. Read it **only** as `state.content_dir()`, which layers one on the other; reading `state.CONTENT_DIR` from a request path serves the process default to everyone (see "Per-session content dir"), and `from state import CONTENT_DIR` freezes a stale binding that sees nothing at all. Also holds `principal()`/`ensure_principal()`, the identity hook.
+- **`config.py`** — static constants: cache/preset layout, asset/logo allowlists, git-URL prefixes, `IGNORED_DIRS`, `RECENTS_LIMIT`/`PRINCIPALS_LIMIT`, plus `load_secret_key()` (the persisted session-signing key).
 - **`links.py`** — `is_local_reference` / `resolve_reference` (local-ref gate + resolver, shared by both rewriters).
 - **`frontmatter.py`** — `extract_frontmatter` + the GitHub-style nested-table panel.
 - **`markdown_ext.py`** — all custom Python-Markdown extensions (priorities below) + `MERMAID_BLOCK_RE`.
 - **`render.py`** — `sanitize_html` (the bleach allowlist), `render_markdown`, `render_rst`, `rewrite_local_links`.
 - **`files.py`** — `safe_path` (traversal guard), `scan_markdown_files`, `build_tree`, `collect_tree_metadata`.
 - **`tasks.py`** — `toggle_task_marker` (flips the Nth `[ ]`↔`[x]` task-list checkbox in *source* markdown, skipping fenced code; backs `/api/toggle-task`).
-- **`sources.py`** — runtime source switching: `set_content_dir`, git clone/pull, the `sources.json` recents + last-file memory.
+- **`sources.py`** — runtime source switching: `set_content_dir`, git clone/pull, and the `sources.json` store (per-principal recents buckets + shared fallback, last-file memory, `all_referenced_paths`).
 - **`presets.py`** — PDF-preset storage + logo/cover-image cleanup.
 - **`export.py`** — the entire PDF + DOCX pipeline and its shared token/header/footer/cover helpers + preset serialization (no routes; the `/export/*` and `/api/pdf-presets*` handlers in `app.py` call into it).
 
-Routes (all in `app.py`): `/` renders the viewer; `/asset/<path>` serves local images + non-markdown files; `/raw/<path>` returns raw markdown as `text/plain` (source-view toggle); `/api/source*` drive the source picker; `/api/save` + `/api/file/*` + `/api/upload-asset` + `/api/render` back the editor (local sources only); `/api/toggle-task` persists a single task-list checkbox toggle; `/export/pdf` and `/export/docx` (via pandoc); `/api/pdf-presets*` manage presets. Templates in `templates/index.html`; client behavior (theme/font/width/font-size selectors, sidebar collapse + floating re-open, bidirectional TOC↔content scroll sync, TOC filter box, tree collapse + sort, search filter, scroll persistence, mermaid overlay, copy buttons, export popover + preset manager modal) in `static/js/app.js`.
+Routes (all in `app.py`): `/` renders the viewer; `/asset/<path>` serves local images + non-markdown files; `/raw/<path>` returns raw markdown as `text/plain` (source-view toggle); `/api/source*` drive the source picker; `/api/save` + `/api/file/*` + `/api/upload-asset` + `/api/render` back the editor (local sources only); `/api/toggle-task` persists a single task-list checkbox toggle; `/api/search` full-text searches the active source; `/export/pdf` and `/export/docx` (via pandoc); `/api/pdf-presets*` manage presets. Templates in `templates/index.html`; client behavior (theme/font/width/font-size selectors, sidebar collapse + floating re-open, bidirectional TOC↔content scroll sync, TOC filter box, tree collapse + sort, search filter, scroll persistence, mermaid overlay, copy buttons, export popover + preset manager modal, keyboard shortcuts + Alt accelerators) in `static/js/app.js`.
 
 ### Request flow for `/`
 
@@ -117,16 +117,52 @@ Rendered checkboxes (see `TaskListExtension`) are **interactive only on a writab
 
 ### Runtime source switching
 
-`CONTENT_DIR` can be swapped at runtime via `POST /api/source` (`{"source": "..."}`):
+The active content dir can be swapped at runtime via `POST /api/source` (`{"source": "..."}`). The swap is **scoped to the calling session** (see "Per-session content dir" below), not to the process:
 
-- A local path is resolved + validated by `set_content_dir()` (raises `ValueError`, not `SystemExit`, so the handler returns 400 cleanly).
+- A local path is resolved + validated by `set_content_dir()` (raises `ValueError`, not `SystemExit`, so the handler returns 400 cleanly), which hands off to `state.set_active_dir()`.
 - A git URL — detected by `is_git_url()` (scheme prefix or `.git` suffix) — is cloned/pulled into `CACHE_DIR/repos/<safe-name>` via `subprocess.run(["git", ...])` with depth=1 and a timeout, then used as the new `CONTENT_DIR`.
-- Every successful swap is recorded in `CACHE_DIR/sources.json` (`record_recent()` dedupes by path, inserts at index 0, caps at `RECENTS_LIMIT`). The launch dir is seeded on startup so the picker is never empty.
+- Every successful swap is recorded in `CACHE_DIR/sources.json` (`record_recent()` dedupes by path, inserts at index 0, caps at `RECENTS_LIMIT`) — into the **calling principal's** bucket, see "Per-principal recents". The launch dir is seeded on startup so the picker is never empty.
 - **Startup resumes the last source.** `resolve_startup_dir()` returns an explicit CLI `directory` when given; otherwise restores `load_recents()[0]` (most recent, since `record_recent` prepends), skipping paths that no longer exist, finally falling back to `.`. This is why `directory` defaults to `None`, not `"."` — a bare `python app.py` must be distinguishable from an explicit `.` so it resumes instead of snapping back to cwd (which would 404 the previously-open `?file=`).
+
+Recents rows ellipsize their label, so each carries `data-tooltip` with the full path (plus the remote URL on a second line for `kind: git`). A generic delegated handler in `static/js/app.js` renders `[data-tooltip]` as a themed `.hover-tooltip` div appended to `<body>` with `position: fixed` — a `title` was too slow/small for a long path, and an absolutely-positioned pseudo-element would be clipped by the sidebar's `overflow`.
 
 `CACHE_DIR` defaults to `~/.cache/markwright/` but follows `XDG_CACHE_HOME`.
 
-Cache cleanup: `prune_repo_cache()` runs at startup and deletes any `REPOS_DIR` subdir not referenced by `load_recents()` paths (and never `CONTENT_DIR`). `POST /api/source/remove {"path": "..."}` removes one recent; if the entry is `kind: git` *and* the resolved path is under `REPOS_DIR`, the clone is `shutil.rmtree`-d. Two guards: removing the active `CONTENT_DIR` → **400**, and `kind: local` entries never trigger filesystem deletion (so pointing at a working tree can't `rmtree` it via the UI).
+### Per-session content dir
+
+The served directory used to be **one process global**, so with two browsers open the last client to switch sources switched it for everyone — browser A pressing F5 was suddenly served browser B's tree, and worse, A's next `/api/save` resolved against B's root. It is now two layers (`markwright/state.py`):
+
+- **process default** — `state.CONTENT_DIR`, set at startup by `resolve_startup_dir()`. What a client with no session cookie gets.
+- **per-session override** — written to the signed session cookie by `state.set_active_dir()` when called inside a request, resolved back (once per request, memoized on `flask.g`) by `state.content_dir()`.
+
+**Every request path must read `state.content_dir()`**, never `state.CONTENT_DIR` — that includes `safe_path()` and everything downstream of it, which is why the whole scan/render/save surface is session-correct. Outside a request context (CLI startup, the test fixtures) there is no session, so `set_active_dir` moves the process default instead; that's what keeps `python app.py <dir>` and `conftest`'s `content_dir` fixture working unchanged. A session pointing at a directory that has since been deleted falls back to the process default and drops the key.
+
+`session["sid"]` is an anonymous per-client uuid minted by the `bind_principal` `before_request` hook. Nothing reads it yet — it's the slot the authenticated user id occupies once login exists, at which point per-session state becomes per-user without changing shape.
+
+**The signing key is persisted**, not per-process: `load_secret_key()` reads `MARKWRIGHT_SECRET_KEY`, else generates once into `CACHE_DIR/secret_key` at 0600. A fresh key each boot would void every session on each debug auto-reload — silently re-creating the very bug this replaces. An unwritable cache degrades to an ephemeral in-memory key rather than failing to boot.
+
+### Per-principal recents
+
+`sources.json` holds a bucket per principal plus one **shared** list:
+
+```json
+{"recents": [...], "principals": {"<id>": {"recents": [...], "updated": 1.0}}}
+```
+
+`recents` predates the buckets and stays top-level, so an old file already parses as a valid store — there is no migration step. It keeps two jobs a bucket structurally cannot: `resolve_startup_dir()` reads it at boot (no request → no principal), and a first-time client is **seeded** from it so a new browser opens on a populated picker. `save_recents()` mirrors the latest writer into it for exactly those two consumers.
+
+**Seeding happens at mint time**, in the `bind_principal` hook (`state.ensure_principal()` returns `True` only on the request that minted an identity → `seed_recents_for_new_principal()`). Doing it lazily on first write looks equivalent and is not: a client that only ever *reads* writes nothing, keeps no bucket, and therefore keeps resolving through the shared list — so another client reordering that list or moving its `last_file` drags the passive client's picker and resume point along. That's a quieter re-run of the original bug, and it only showed up in a live two-browser run, not in tests. Seeding is a private copy and deliberately **does not** go through `save_recents` (which would touch the shared list).
+
+Two consequences worth knowing:
+
+- A new client **inherits the shared history once**, then diverges permanently. Right for one person's second browser; wrong once accounts exist — that's the seam to revisit at login.
+- Buckets are capped at `PRINCIPALS_LIMIT` (50), evicting least-recently-touched. Eviction is not user-visible: that client is simply reseeded from the shared list.
+
+Writes go through `_STORE_LOCK` (an `RLock` — the public helpers compose) and `_save_store` writes to a temp file then `os.replace`s it, so a reader never sees a half-written document. The server is `threaded=True`, so concurrent read-modify-write was otherwise a real lost-update race.
+
+**Destructive paths key off `all_referenced_paths()`**, the union across every bucket plus the shared list — never one caller's recents. `prune_repo_cache()` uses it, and so does the clone deletion in `/api/source/remove`: removal is per-client, but the `rmtree` is not, so the checkout is deleted only once *nobody* still references it. Without that guard one client removing a git source would delete a clone another client is reading.
+
+Cache cleanup: `prune_repo_cache()` runs at startup and deletes any `REPOS_DIR` subdir not referenced by `all_referenced_paths()` (and never the active dir). `POST /api/source/remove {"path": "..."}` removes one recent from the caller's bucket; if the entry is `kind: git` *and* the resolved path is under `REPOS_DIR`, the clone is `shutil.rmtree`-d. Three guards: removing the caller's active dir → **400**; `kind: local` entries never trigger filesystem deletion (so pointing at a working tree can't `rmtree` it via the UI); and the clone survives while any *other* principal still references it.
 
 ### PDF export and presets
 
@@ -134,9 +170,10 @@ Cache cleanup: `prune_repo_cache()` runs at startup and deletes any `REPOS_DIR` 
 
 **Error handling never leaks a traceback.** `export_pdf()` calls `_render_pdf` in a 2-attempt loop: a *retryable* failure (`_is_retryable_export_error` — timeouts/`ERR_`/navigation) gets one retry; a hard failure (no Chrome, `ERR_UNSAFE_PORT`) bails. On final failure the exception is `logging.exception`-logged and `_export_error_message(exc)` returns a clean, translated message + status (no Chrome → 503, unsafe port → 500, timeout → 504, else 500). `export_docx()` does the same.
 
-Two non-obvious requirements:
+Three non-obvious requirements:
 
 - **`threaded=True`**: the export request makes Chrome fetch the page from this same server; single-threaded would deadlock.
+- **Cookie replay** (`playwright_cookies()` → `page.context.add_cookies()` before the first `goto`): that Chrome runs a throwaway profile with an **empty cookie jar**, so it is a different HTTP client than the one that asked for the export. Since the content dir is per-session, an uncookied Chrome resolves as *nobody* and is served the process default — it would export whatever doc another browser's source happens to hold (in practice `/?file=…` 302s to `/` and you get the wrong document entirely). Replaying `request.cookies` fixes it; a signed token on the export URL would **not**, because the printed page pulls `/asset/<img>` subresources that resolve through the same session and a URL token doesn't propagate to an `<img src>`. Cookies do. `sameSite="Lax"` and `secure=False` are set explicitly: Playwright's `"None"` default is honored only alongside `Secure`, which plain http can't satisfy. Replaying the `lang` cookie also means the PDF renders in the user's UI locale.
 - **`--explicitly-allowed-ports=<port>`** launch arg: Chrome refuses "unsafe" ports (e.g. 5060) with `ERR_UNSAFE_PORT`. The port is parsed from the URL and whitelisted so export works on any `--port`.
 
 **Header/footer are 3-column bands** (left/center/right). The request sends `header_left`/`header_center`/`header_right` and `footer_*`; `_band_parts()` resolves each column via a fallback cascade (query param → preset's stored column → a legacy single `?header=`/`?footer=` mapped to center). `_hf_band()` builds a flex row where the **center column is wider (`flex:2` vs `flex:1`)** and, in headers, larger (`font-size:11px`, normal weight — *not* semibold, so inline `**bold**` stays heavier; the title slot's prominence comes from size, not weight). `_header_template()` wraps `_hf_band(..., header=True)` and stacks the preset logo above its column at `logoPosition`; `_footer_template()` wraps `_hf_band(..., header=False)` with no logo. Chrome renders header/footer at font-size 0 unless the template sets its own size, so the band always emits an explicit `font-size`.
@@ -182,11 +219,45 @@ CRUD routes: `GET /api/pdf-presets` (lists via `_serialize_preset()` — exposes
 
 **Fidelity caveats (intentional):** the PDF-only fields — header/footer bands, margins, `fontScale`, frontmatter panel — do **not** apply (DOCX honors `file`, `preset` (font + TOC flag + cover fields), `include_toc`, `include_cover`). The popover's **Word (.docx)** button (`#export-run-docx`) shares `runExport(format)` with the PDF button; for Word it sends only `file`, `preset`, `include_toc`, `include_cover`.
 
+### Keyboard shortcuts
+
+Two layers, both in `static/js/app.js`, documented together in the `#shortcuts-modal` help dialog (⌨ button or `?`):
+
+- **Single-key** (`setupShortcuts`): `?` help, `/` search, `b` sidebar, `s` source view, `e` edit, `t` back to top (`f` focus mode lives in `setupFocusMode`). They **bail while typing or editing** (`INPUT`/`TEXTAREA`/`contentEditable`/`.CodeMirror`, or `editActive`) and while a modifier is held, so they can't fire mid-word.
+- **Alt accelerators** (`setupAltAccelerators`): OS-style access keys — `Alt+E` edit, `Alt+S` source, `Alt+F` filter files, `Alt+H` filter headings, `Alt+B` sidebar, `Alt+C` contents, `Alt+D` export, `Alt+A` file actions, `Alt+M` bookmarks, `Alt+O` open source, `Alt+G` appearance, `Alt+R` focus reading, `Alt+I` frontmatter, `Alt+T` top, `Alt+K` help. **Holding Alt for 300ms paints a badge over every reachable control** (`.accel-badge`); tapping Alt below that never flashes them.
+
+Non-obvious bits of the Alt layer:
+
+- Each entry is `{key, sel, act, reveal}` and resolves to a **DOM control**, not an internal function: `sel` is a list because collapse/show button pairs swap as their panel toggles, and clicking the visible one reuses the handler already wired to it. `reveal` lists openers (outermost first) clicked only while the target is still invisible, so `Alt+F` re-opens a collapsed sidebar and `Alt+O` also opens the `<details>` source picker.
+- `visible()` treats a **closed `<details>` as hidden** — Chrome still reports a client rect for its slotted body — but exempts that `<details>`' own `<summary>`, which is the control that opens it.
+- Matching goes through **`event.code`** (`KeyE`), not `event.key`: on macOS `Alt+E` reports `"´"`, and several letters shift on non-US layouts. `ctrlKey` bails so **AltGr** (which reports ctrl+alt) still types characters.
+- Unlike the single-key layer these deliberately **stay live while typing or editing** — that's what the modifier buys, and it makes `Alt+E` the reliable way *out* of the editor.
+- Badges are `position: fixed` divs on `<body>`, not a `::after` on each control: the sidebar/TOC panels clip their overflow and would swallow a pseudo-element badge on an edge control (same reason as `.hover-tooltip`). They re-render on scroll/resize while shown.
+- A bare Alt tap that *did* show badges `preventDefault`s its `keyup` to swallow the browser's "focus the menu bar"; a tap too short to show them is left alone.
+
 ### TOC filter
 
 The `#toc-search` box (in the sticky `.toc-panel-top`, alongside "On this page") filters a long index client-side: each `.toc li` whose own link text matches gets `is-toc-match`, everything without a match in its own subtree gets `is-toc-filtered` (`display:none`) — so an ancestor stays visible whenever a descendant matches and the hierarchy still reads. Matching is accent-insensitive (`foldText` = lowercase + NFD + strip `̀-ͯ`, so "modulo" finds "Módulo") and the matched substring is wrapped in `<mark>`; a match also un-truncates (`white-space:normal`) since entries are ellipsized by default. Enter jumps to the first match, Escape clears, and clicking any entry clears the filter.
 
 Non-obvious: filtering fights the **TOC↔content scroll sync**. Hidden entries have zero-height rects and the visible ones no longer follow reading order, so `syncContentFromToc()` bails while `tocFiltering`, `updateActiveToc()` skips its `scrollIntoView`, and `applyTocFilter()` sets `contentDriving` for 120ms so the scrollTop jump from collapsing/expanding entries doesn't yank the document — then re-centres on the active heading once cleared.
+
+### Content search: jump to the hit + highlight
+
+The sidebar search's **content** mode (`GET /api/search`, `search_files()` in `markwright/files.py`) renders one anchor per snippet. Each snippet link carries the *clicked* occurrence: `?file=…&q=<query>&qc=<snippet text>&qp=<offset of the hit inside the snippet>&qi=<snippet ordinal>`; the file-name link carries only `q`.
+
+On the target page `highlightSearchQuery()` (`static/js/app.js`) wraps **every** occurrence of `q` in `<mark class="search-hit">`, marks one as `is-active-hit` and scrolls it into view — returning `true` so the saved per-file scroll restore yields to it.
+
+It runs as a **top-level statement**, not from the `load` listener: `app.js` is a classic script at the end of `<body>`, so the document is already parsed, while `load` waits for every image *and* the mermaid CDN module — which is what made a jump feel sluggish (measured on a page with one diagram: hit painted at ~230ms with `readyState` still `loading`, `load` at ~590ms). The `load` handler then **re-anchors** on `.is-active-hit`, because a late image or diagram above the hit shifts it off-screen.
+
+Which occurrence is "the" one is decided by `pickHitIndex()`, and it can't be a plain ordinal: `search_files` scans *raw source* lines while the DOM holds *rendered* text, so the counts drift (a hit inside a fenced block, `**bold**` markers, frontmatter). It scores each hit by how much of the snippet's before/after context it reproduces — comparing through `foldForMatch()` (lowercase + NFD, diacritics dropped, non-`\p{L}\p{N}` punctuation dropped, whitespace collapsed) so a source `**Módulo**` matches a rendered `Módulo` — via `commonSuffix` on the left context + `commonPrefix` on the right. Best score wins; a score of 0 everywhere falls back to `qi`, then to the first hit.
+
+Text inside `<pre>`/`<code>` **is** wrapped (it was skipped before snippet jumping existed): `/api/search` matches inside fences, so a hit there needs a target or its snippet would scroll somewhere unrelated. `pre.mermaid` stays excluded — its text is the diagram source the client renderer consumes.
+
+A result pointing at the document **already open** never reloads: the snippet's click handler `preventDefault`s, `history.replaceState`s the new `qc/qp/qi`, and re-runs the jump in place (`clearSearchHighlight()` unwraps the old marks and `body.normalize()` re-merges the split text nodes, or the next `TreeWalker` pass would see fragments). ~40ms instead of a full server render + page load. Modified clicks (ctrl/cmd/shift/alt, middle button) and cross-file results fall through to normal navigation.
+
+**The search survives the jump.** A cross-file result *is* a page load, which used to wipe the box — you had to retype the word to search again. Query + mode + the last `/api/search` payload are stashed in `sessionStorage` (`markwright-search`, per tab) on every input/mode change and restored by `restoreSearchState()`: the cached payload repaints the panel immediately and `runContentSearch(query, quiet=true)` refreshes it in the background without blanking it to a "Searching…" status. The URL's `q` is the fallback when there is no stashed state. `markCurrentResult()` flags the snippet the document sits on (`is-current`, keyed on `file` + `qi`) so returning to the panel shows where you were.
+
+The yellow paint is a preference, not a mode: hits are always wrapped (the jump needs them) and only the `no-search-highlight` class on `.markdown-body` decides whether they're painted. The header `#search-highlight-toggle` (🖍) flips it, persists to `localStorage` (`markwright-search-highlight`, default on) and stays `hidden` until a page actually has hits.
 
 ### Internationalization (i18n)
 
@@ -226,4 +297,4 @@ The `en` catalog keeps empty `msgstr`s: gettext returns the (English) msgid when
 
 ### State that lives in the browser
 
-`static/js/app.js` persists theme (`markwright-theme`), sidebar collapsed (`markwright-sidebar-hidden`), sidebar scroll (`markwright-sidebar-scroll`), per-file content scroll (`markwright-content-scroll:<path>`), the last-used export preset id (`markwright-export-preset`), the task-checkbox auto-save preference (`markwright-task-autosave`), and per-file unsaved editor drafts (`markwright-draft:<root>:<file>`) in `localStorage`. PDF presets themselves live server-side in `CACHE_DIR`, not the browser (only the *selected* preset id is remembered client-side). There is no server-side session.
+`static/js/app.js` persists theme (`markwright-theme`), sidebar collapsed (`markwright-sidebar-hidden`), sidebar scroll (`markwright-sidebar-scroll`), per-file content scroll (`markwright-content-scroll:<path>`), the last-used export preset id (`markwright-export-preset`), the task-checkbox auto-save preference (`markwright-task-autosave`), the search-highlight preference (`markwright-search-highlight`), and per-file unsaved editor drafts (`markwright-draft:<root>:<file>`) in `localStorage`. PDF presets themselves live server-side in `CACHE_DIR`, not the browser (only the *selected* preset id is remembered client-side). Server-side per-client state is limited to the signed session cookie (the anonymous `sid` + the active content dir — see "Per-session content dir"); there is no server-side session *store*. The sidebar search (query + mode + last results) lives in `sessionStorage` (`markwright-search`) instead, so it is per-tab and gone when the tab closes.

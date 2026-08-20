@@ -106,6 +106,10 @@ ES = {
     "Auto-save checkboxes: on": "Guardado automático de casillas: activado",
     "Auto-save checkboxes: off (changes won’t be saved)":
         "Guardado automático de casillas: desactivado (los cambios no se guardarán)",
+    "Search highlight": "Resaltado de búsqueda",
+    "Toggle search highlight": "Alternar el resaltado de búsqueda",
+    "Search highlight: on": "Resaltado de búsqueda: activado",
+    "Search highlight: off": "Resaltado de búsqueda: desactivado",
     "Bold (Ctrl+B)": "Negrita (Ctrl+B)",
     "Italic (Ctrl+I)": "Cursiva (Ctrl+I)",
     "Inline code": "Código en línea",
