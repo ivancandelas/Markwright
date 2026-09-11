@@ -11,7 +11,8 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import app as appmod
-from markwright import config
+from markwright import config, files
+from markwright.markdown_ext import github_slugify
 
 
 def _raise_oserror(*args, **kwargs):
@@ -143,6 +144,25 @@ class TestScanAndTree:
         assert "sub/c.md" in found
         assert ".git/hidden.md" not in found
 
+    def test_scan_result_is_cached_and_invalidated(self, content_dir):
+        (content_dir / "a.md").write_text("x")
+        assert appmod.scan_markdown_files() == ["a.md"]
+        # A write behind the app's back is invisible until the TTL lapses...
+        (content_dir / "b.md").write_text("x")
+        assert appmod.scan_markdown_files() == ["a.md"]
+        # ...but an explicit invalidation (what the file routes do) is immediate.
+        files.invalidate_scan_cache(content_dir)
+        assert appmod.scan_markdown_files() == ["a.md", "b.md"]
+
+    def test_scan_caches_per_root(self, content_dir, tmp_path_factory):
+        (content_dir / "a.md").write_text("x")
+        assert appmod.scan_markdown_files() == ["a.md"]
+        other = tmp_path_factory.mktemp("other")
+        (other / "z.md").write_text("x")
+        # Keyed on the root, so switching source can't serve the old listing.
+        appmod.set_content_dir(other)
+        assert appmod.scan_markdown_files() == ["z.md"]
+
     def test_build_tree_nests_by_path(self):
         tree = appmod.build_tree(["a.md", "sub/b.md", "sub/deep/c.md"])
         assert tree["a.md"] == "a.md"
@@ -153,6 +173,94 @@ class TestScanAndTree:
 # --------------------------------------------------------------------------- #
 # sanitize_html
 # --------------------------------------------------------------------------- #
+class TestIsDiscoverable:
+    """``is_discoverable`` is the O(1) stand-in for ``rel in
+    scan_markdown_files()`` on every single-document route, so the two must
+    agree — that equivalence is what these pin down."""
+
+    def _tree(self, root):
+        (root / "a.md").write_text("x")
+        (root / "b.rst").write_text("x")
+        (root / "README").write_text("x")
+        (root / "notes.txt").write_text("x")
+        (root / "sub").mkdir()
+        (root / "sub" / "c.md").write_text("x")
+        (root / ".git").mkdir()
+        (root / ".git" / "hidden.md").write_text("x")
+
+    def test_agrees_with_scan_set(self, content_dir):
+        self._tree(content_dir)
+        found = appmod.scan_markdown_files()
+        assert found  # guard against a vacuous pass
+        for rel in found:
+            assert files.is_discoverable(rel), rel
+
+    @pytest.mark.parametrize(
+        "rel",
+        [
+            "",
+            "   ",
+            "missing.md",          # not on disk
+            "notes.txt",           # not a doc suffix
+            "sub",                 # a directory, not a file
+            ".git/hidden.md",      # under an ignored dir
+            "../outside.md",       # escapes the root
+            "./a.md",              # not the spelling the scanner emits
+            "sub//c.md",
+        ],
+    )
+    def test_rejects_what_the_scan_set_omits(self, content_dir, rel):
+        self._tree(content_dir)
+        assert rel not in appmod.scan_markdown_files()
+        assert not files.is_discoverable(rel)
+
+    def test_windows_separators_normalize(self, content_dir):
+        self._tree(content_dir)
+        assert files.is_discoverable("sub\\c.md")
+
+
+class TestIgnoreFile:
+    def test_bare_name_skips_dir_at_any_depth(self, content_dir):
+        (content_dir / "keep.md").write_text("x")
+        deep = content_dir / "one" / "worktrees" / "two"
+        deep.mkdir(parents=True)
+        (deep / "skip.md").write_text("x")
+        (content_dir / ".markwrightignore").write_text("# a comment\n\nworktrees\n")
+        files.invalidate_scan_cache(content_dir)
+
+        assert appmod.scan_markdown_files() == ["keep.md"]
+        # The guard must agree, or the doc would be unlisted yet still readable.
+        assert not files.is_discoverable("one/worktrees/two/skip.md")
+
+    def test_slashed_entry_is_root_relative(self, content_dir):
+        for rel in ("build/sub/skip.md", "other/build/sub/keep.md"):
+            target = content_dir / rel
+            target.parent.mkdir(parents=True)
+            target.write_text("x")
+        (content_dir / ".markwrightignore").write_text("/build/sub\n")
+        files.invalidate_scan_cache(content_dir)
+
+        found = appmod.scan_markdown_files()
+        assert found == ["other/build/sub/keep.md"]
+        assert not files.is_discoverable("build/sub/skip.md")
+
+    def test_env_var_applies_without_an_ignore_file(self, content_dir, monkeypatch):
+        (content_dir / "keep.md").write_text("x")
+        (content_dir / "vendor").mkdir()
+        (content_dir / "vendor" / "skip.md").write_text("x")
+        monkeypatch.setenv("MARKWRIGHT_IGNORE", "vendor")
+        files.invalidate_scan_cache(content_dir)
+
+        assert appmod.scan_markdown_files() == ["keep.md"]
+
+    def test_builtin_ignores_survive_a_custom_list(self, content_dir):
+        (content_dir / ".markwrightignore").write_text("vendor\n")
+        (content_dir / "node_modules").mkdir()
+        (content_dir / "node_modules" / "x.md").write_text("x")
+        files.invalidate_scan_cache(content_dir)
+
+        assert appmod.scan_markdown_files() == []
+
 class TestSanitizeHtml:
     def test_strips_script(self):
         # bleach strip=True removes the *tags* (so nothing executes); the inert
@@ -477,6 +585,35 @@ class TestExtractDocTitle:
 
 
 # --------------------------------------------------------------------------- #
+# github_slugify — heading ids must match GitHub's, or hand-written indexes break
+# --------------------------------------------------------------------------- #
+class TestGithubSlugify:
+    def test_keeps_accents(self):
+        # Python-Markdown's default slugify would ASCII-fold this away.
+        assert github_slugify("3. Facturación electrónica CFDI") == (
+            "3-facturación-electrónica-cfdi")
+
+    def test_dropped_punctuation_leaves_its_spaces(self):
+        # GitHub removes the `/` and maps each remaining space to one dash, so
+        # the slug keeps a double dash; the default slugify collapses them.
+        assert github_slugify("1. Proyecto KIVA / PGM (Odoo 19 · inmobiliario)") == (
+            "1-proyecto-kiva--pgm-odoo-19--inmobiliario")
+
+    def test_keeps_combining_marks(self):
+        # The U+FE0F in the emoji survives as an empty-looking segment, exactly
+        # as it does on GitHub.
+        assert github_slugify("11. \u26a0\ufe0f Credenciales y accesos") == (
+            "11-\ufe0f-credenciales-y-accesos")
+
+    def test_keeps_underscores_and_hyphens(self):
+        assert github_slugify("Arranque del kernel `re_base` — Capa 1") == (
+            "arranque-del-kernel-re_base--capa-1")
+
+    def test_honors_separator(self):
+        assert github_slugify("A B", "_") == "a_b"
+
+
+# --------------------------------------------------------------------------- #
 # render_markdown smoke test (under CONTENT_DIR)
 # --------------------------------------------------------------------------- #
 class TestRenderMarkdown:
@@ -487,6 +624,19 @@ class TestRenderMarkdown:
         assert "<h1" in html_out
         assert "<strong>bold</strong>" in html_out
         assert isinstance(toc, str)
+
+    def test_heading_ids_match_github_anchor_links(self, content_dir):
+        # An index written against GitHub's slugs must resolve in-app.
+        p = content_dir / "doc.md"
+        p.write_text(
+            "1. [Facturación electrónica](#1-facturación-electrónica)\n"
+            "2. [KIVA / PGM](#2-kiva--pgm)\n\n"
+            "## 1. Facturación electrónica\n\ntext\n\n"
+            "## 2. KIVA / PGM\n\ntext\n"
+        )
+        html_out, _ = appmod.render_markdown(p)
+        assert 'id="1-facturación-electrónica"' in html_out
+        assert 'id="2-kiva--pgm"' in html_out
 
     def test_script_is_sanitized_out(self, content_dir):
         p = content_dir / "doc.md"

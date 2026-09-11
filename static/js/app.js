@@ -24,10 +24,13 @@
   const widthSelect = document.getElementById("width-select");
   const sidebarCollapse = document.getElementById("sidebar-collapse");
   const sidebarShow = document.getElementById("sidebar-show");
+  const topbarCollapse = document.getElementById("topbar-collapse");
+  const topbarShow = document.getElementById("topbar-show");
   const selectedPath = new URLSearchParams(window.location.search).get("file") || "";
   const contentScrollKey = `markwright-content-scroll:${selectedPath}`;
   const sidebarScrollKey = "markwright-sidebar-scroll";
   const sidebarHiddenKey = "markwright-sidebar-hidden";
+  const topbarHiddenKey = "markwright-topbar-hidden";
 
   const THEMES = ["light", "dark", "sepia", "nord", "solarized-light", "solarized-dark", "retro-sun", "monokai", "gruvbox-dark-hard", "github-light-default", "quiet-light", "dracula", "one-dark", "one-light", "tokyo-night", "catppuccin-mocha", "catppuccin-latte", "night-owl", "material-palenight", "ayu-light", "cobalt2"];
   const DARK_THEMES = new Set(["dark", "nord", "solarized-dark", "monokai", "gruvbox-dark-hard", "dracula", "one-dark", "tokyo-night", "catppuccin-mocha", "night-owl", "material-palenight", "cobalt2"]);
@@ -183,6 +186,97 @@
   if (sidebarCollapse) sidebarCollapse.addEventListener("click", () => setSidebarHidden(true));
   if (sidebarShow) sidebarShow.addEventListener("click", () => setSidebarHidden(false));
 
+  // --- Floating document bar ----------------------------------------------
+  // The document header is sticky (see .document-header): it rides above the
+  // document instead of scrolling away, slims to a title strip once pinned, and
+  // can be dismissed entirely — the bar's own button hides it, a floating one
+  // brings it back (the same collapse/show pair the sidebar and TOC use).
+  //
+  // Everything below the bar reads topbarOffset() so the pinned strip never
+  // swallows a jump target: it is the bar's visible height while pinned, 0 once
+  // hidden, and it is also published to CSS as --topbar-h for scroll-margin.
+  let topbarVisibleH = 0;
+  const topbarOffset = () =>
+    (appShell && appShell.classList.contains("is-topbar-hidden") ? 0 : topbarVisibleH);
+
+  (function setupFloatingTopbar() {
+    const header = document.querySelector(".document-header");
+    if (!appShell || !header) return;
+    const isMobile = () => window.matchMedia("(max-width: 820px)").matches;
+    let measuring = false;
+
+    // Measure both states in one shot: the bar is in the flow, so the height it
+    // gives up when it compacts has to be handed back as margin (--topbar-shrink)
+    // or the whole document lurches upward mid-scroll. Two forced layouts, only
+    // on load / resize / a real size change.
+    function measure() {
+      if (measuring) return;
+      measuring = true;
+      if (appShell.classList.contains("is-topbar-hidden") || !header.getClientRects().length) {
+        topbarVisibleH = 0;
+        root.style.setProperty("--topbar-h", "0px");
+        measuring = false;
+        return;
+      }
+      const wasStuck = header.classList.contains("is-stuck");
+      header.classList.remove("is-stuck");
+      const natural = header.offsetHeight;
+      header.classList.add("is-stuck");
+      const stuck = header.offsetHeight;
+      header.classList.toggle("is-stuck", wasStuck);
+      root.style.setProperty("--topbar-shrink", `${Math.max(0, Math.round(natural - stuck))}px`);
+      // Pinned, the bar sits flush against the top edge, so its compact height
+      // is exactly the band it covers.
+      topbarVisibleH = stuck;
+      root.style.setProperty("--topbar-h", `${Math.round(topbarVisibleH)}px`);
+      measuring = false;
+    }
+
+    // Compact exactly while the bar is pinned, read off the bar itself rather
+    // than a scroll threshold — where it pins doesn't depend on how tall it is,
+    // so the two states can't chase each other. The 1px/4px gap is hysteresis
+    // for a scroll resting right on the line.
+    function onScroll() {
+      const portTop = (!isMobile() && contentPanel) ? contentPanel.getBoundingClientRect().top : 0;
+      const gap = header.getBoundingClientRect().top - portTop;
+      const on = header.classList.contains("is-stuck");
+      if (!on && gap <= 1) header.classList.add("is-stuck");
+      else if (on && gap > 4) header.classList.remove("is-stuck");
+    }
+
+    function applyHidden(hidden) {
+      appShell.classList.toggle("is-topbar-hidden", hidden);
+      if (topbarCollapse) topbarCollapse.setAttribute("aria-expanded", String(!hidden));
+      if (topbarShow) topbarShow.setAttribute("aria-expanded", String(!hidden));
+      measure();
+    }
+
+    function setHidden(hidden) {
+      localStorage.setItem(topbarHiddenKey, String(hidden));
+      applyHidden(hidden);
+      if (!hidden && topbarCollapse) topbarCollapse.focus();
+      else if (hidden && topbarShow) topbarShow.focus();
+    }
+
+    window.__mwToggleTopbar = function () {
+      setHidden(!appShell.classList.contains("is-topbar-hidden"));
+    };
+
+    if (topbarCollapse) topbarCollapse.addEventListener("click", () => setHidden(true));
+    if (topbarShow) topbarShow.addEventListener("click", () => setHidden(false));
+
+    applyHidden(localStorage.getItem(topbarHiddenKey) === "true");
+    measure();
+    onScroll();
+
+    if (contentPanel) contentPanel.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", function () { measure(); onScroll(); });
+    // A longer title wrapping, the editor opening, focus mode hiding the bar:
+    // anything that resizes it re-publishes the offsets.
+    if (window.ResizeObserver) new ResizeObserver(() => measure()).observe(header);
+  })();
+
   // --- Keyboard shortcuts help + global single-key shortcuts ---------------
   // A help dialog listing every shortcut (opened from the ⌨ button or "?"),
   // plus a handful of app-wide single-key shortcuts. All single-key shortcuts
@@ -240,6 +334,10 @@
         case "B":
           event.preventDefault();
           setSidebarHidden(!appShell.classList.contains("is-sidebar-hidden"));
+          break;
+        case "h":
+        case "H":
+          if (window.__mwToggleTopbar) { event.preventDefault(); window.__mwToggleTopbar(); }
           break;
         case "s":
         case "S":
@@ -318,21 +416,25 @@
       if (el.select) el.select();
     }
 
+    // Controls living in the document bar list #topbar-show as an opener, so a
+    // hidden bar is brought back rather than swallowing its own accelerators.
+    const BAR = ["#topbar-show"];
     const ACCELS = [
-      { key: "a", sel: ["#file-menu-toggle"] },
+      { key: "a", sel: ["#file-menu-toggle"], reveal: BAR },
       { key: "b", sel: ["#sidebar-collapse", "#sidebar-show"] },
       { key: "c", sel: ["#toc-collapse", "#toc-show"] },
-      { key: "d", sel: ["#export-pdf"] },
-      { key: "e", sel: ["#edit-toggle"] },
+      { key: "d", sel: ["#export-pdf"], reveal: BAR },
+      { key: "e", sel: ["#edit-toggle"], reveal: BAR },
       { key: "f", sel: ["#file-search"], act: focusInput, reveal: ["#sidebar-show"] },
       { key: "g", sel: ["#settings-toggle"], reveal: ["#sidebar-show"] },
       { key: "h", sel: ["#toc-search"], act: focusInput, reveal: ["#toc-show"] },
-      { key: "i", sel: ["#frontmatter-toggle"] },
+      { key: "i", sel: ["#frontmatter-toggle"], reveal: BAR },
       { key: "k", sel: ["#shortcuts-toggle"], reveal: ["#sidebar-show"] },
-      { key: "m", sel: ["#bookmark-toggle"] },
+      { key: "m", sel: ["#bookmark-toggle"], reveal: BAR },
       { key: "o", sel: ["#source-input"], act: focusInput, reveal: ["#sidebar-show", "#source-picker > summary"] },
-      { key: "r", sel: ["#focus-read-toggle"] },
-      { key: "s", sel: ["#source-view-toggle"] },
+      { key: "p", sel: ["#topbar-collapse", "#topbar-show"] },
+      { key: "r", sel: ["#focus-read-toggle"], reveal: BAR },
+      { key: "s", sel: ["#source-view-toggle"], reveal: BAR },
       { key: "t", sel: [".back-to-top"] },
     ];
 
@@ -1167,9 +1269,12 @@
     // 12px lead the TOC->content sync uses so the two agree on "at the top".
     function spotTopFor(el) {
       const top = el.getBoundingClientRect().top;
-      if (isMobile()) return Math.max(0, window.scrollY + top - 12);
+      // The floating bar covers the first topbarOffset() px of the pane, so the
+      // spot has to land below it, not under it.
+      const lead = 12 + topbarOffset();
+      if (isMobile()) return Math.max(0, window.scrollY + top - lead);
       if (!contentPanel) return 0;
-      return Math.max(0, contentPanel.scrollTop + top - contentPanel.getBoundingClientRect().top - 12);
+      return Math.max(0, contentPanel.scrollTop + top - contentPanel.getBoundingClientRect().top - lead);
     }
 
     function bookmarkTargetTop(b) {
@@ -3614,7 +3719,8 @@
       const panelTop = contentPanel.getBoundingClientRect().top;
       let active = headings[0];
       for (const heading of headings) {
-        if (heading.getBoundingClientRect().top - panelTop <= 80) {
+        // Anything under the floating bar has already been read past.
+        if (heading.getBoundingClientRect().top - panelTop <= 80 + topbarOffset()) {
           active = heading;
         } else {
           break;
@@ -3660,7 +3766,7 @@
       const heading = document.getElementById(bestId);
       if (!heading) return;
       const panelTop = contentPanel.getBoundingClientRect().top;
-      contentPanel.scrollTop += heading.getBoundingClientRect().top - panelTop - 12;
+      contentPanel.scrollTop += heading.getBoundingClientRect().top - panelTop - 12 - topbarOffset();
     }
 
     let contentScheduled = false;

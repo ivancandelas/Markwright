@@ -9,6 +9,7 @@ bail on 4-space/tab-indented lines so it doesn't corrupt indented code blocks.
 """
 import html
 import re
+import unicodedata
 from xml.etree import ElementTree as etree
 
 import markdown
@@ -24,6 +25,38 @@ try:
     import emoji as _emoji_lib
 except ImportError:
     _emoji_lib = None
+
+
+def github_slugify(value, separator="-"):
+    """Slugify a heading id the way GitHub does, for the ``toc`` extension.
+
+    Python-Markdown's default ``slugify`` diverges from GitHub in two ways, and
+    both silently break a hand-written "Índice" whose links were copied from a
+    GitHub-rendered view:
+
+    * it NFKD-folds to ASCII, so ``Facturación`` becomes ``facturacion`` while
+      GitHub keeps ``facturación``;
+    * it *collapses* runs of whitespace/separators into one, so ``KIVA / PGM``
+      becomes ``kiva-pgm`` while GitHub, which only drops the punctuation and
+      then maps each remaining space to one dash, yields ``kiva--pgm``.
+
+    So this mirrors ``github-slugger``: lowercase, drop every character that is
+    not a letter, digit, combining mark, ``_`` or ``-``, and turn each surviving
+    space into ``separator``. Combining marks are kept deliberately — that is
+    what preserves the invisible U+FE0F in a heading like ``## ⚠️ Credenciales``
+    (whose GitHub slug really does carry an empty-looking segment).
+
+    Uniquifying stays Python-Markdown's job (``toc.unique``), which suffixes
+    ``_1`` where GitHub uses ``-1``; that only shows up on repeated headings.
+    """
+    out = []
+    for char in value.lower():
+        if char == " ":
+            out.append(separator)
+        elif (char.isalnum() or char in "_-"
+                or unicodedata.category(char).startswith("M")):
+            out.append(char)
+    return "".join(out)
 
 
 MERMAID_BLOCK_RE = re.compile(

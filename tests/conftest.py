@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
 import app as appmod
-from markwright import sources, state
+from markwright import files, sources, state
 
 
 @pytest.fixture(autouse=True)
@@ -36,6 +36,12 @@ def content_dir(tmp_path):
     CONTENT_DIR now lives on the ``markwright.state`` module (swapped live at
     runtime); read/restore it there, not on ``app``."""
     previous = state.CONTENT_DIR
+    # The listing/metadata/ignore caches are keyed on the root, so a fresh
+    # tmp_path can't inherit another test's entry — but a single test that
+    # scans, writes, and scans again would read its own stale listing for
+    # SCAN_TTL_SECONDS. Clear on both edges so tests see the filesystem.
+    files.invalidate_scan_cache()
     appmod.set_content_dir(tmp_path)
     yield Path(state.CONTENT_DIR)
+    files.invalidate_scan_cache()
     state.CONTENT_DIR = previous

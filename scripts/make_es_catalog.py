@@ -158,6 +158,8 @@ ES = {
     # --- appearance / settings -----------------------------------------
     "Appearance settings": "Ajustes de apariencia",
     "Hide sidebar": "Ocultar la barra lateral",
+    "Hide top bar": "Ocultar la barra superior",
+    "Hide top bar (h)": "Ocultar la barra superior (h)",
     "Appearance": "Apariencia",
     "Language": "Idioma",
     "Theme": "Tema",
@@ -232,6 +234,8 @@ ES = {
     "Markdown files": "Archivos markdown",
     "No markdown files found.": "No se encontraron archivos markdown.",
     "Show sidebar": "Mostrar la barra lateral",
+    "Show top bar": "Mostrar la barra superior",
+    "Show top bar (h)": "Mostrar la barra superior (h)",
     # --- document header ------------------------------------------------
     "Current file": "Archivo actual",
     "No markdown file selected": "Ningún archivo markdown seleccionado",
@@ -345,6 +349,7 @@ ES = {
     "Open folder or repository": "Abrir carpeta o repositorio",
     "Search files": "Buscar archivos",
     "Toggle sidebar": "Mostrar/ocultar la barra lateral",
+    "Toggle top bar": "Mostrar/ocultar la barra superior",
     "Toggle focus reading mode": "Activar/desactivar el modo de lectura enfocada",
     "Close dialogs / exit modes": "Cerrar diálogos / salir de los modos",
     "General": "General",

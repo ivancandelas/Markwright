@@ -15,6 +15,10 @@
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --content-max-width: 980px;
   --content-font-size: 16px;
+  /* Top padding of the scrolling content pane. The floating document
+     header parks itself over this band (see .document-header), so both
+     read it from here instead of repeating the number. */
+  --content-pad-top: 34px;
   --alert-note: #0969da;
   --alert-tip: #1a7f37;
   --alert-important: #8250df;
@@ -1288,7 +1292,13 @@ a {
 .content-panel {
   height: 100vh;
   overflow: auto;
-  padding: 34px clamp(18px, 5vw, 64px);
+  /* No *top* padding here on purpose — it lives on .content-with-toc below so
+     the floating header can pin flush to the top edge (see .document-header). */
+  padding: 0 clamp(18px, 5vw, 64px) var(--content-pad-top);
+}
+
+.content-with-toc {
+  padding-top: var(--content-pad-top);
 }
 
 /* Scrollbars: normal width everywhere so they're easy to grab (the old reason
@@ -1333,19 +1343,119 @@ a {
   background-clip: padding-box;
 }
 
+/* Floating document bar ---------------------------------------------------
+   The header rides above the document instead of scrolling away, so the file
+   name and every action stay reachable at any scroll position.
+
+   It pins flush to the top edge (top:0) only because .content-panel carries no
+   top padding: a sticky offset is resolved against the scroll container's box
+   and engines disagree on whether that box includes its padding, so the padding
+   sits on .content-with-toc instead — the bar's own padding-top then supplies
+   the same gap while the document is at the top, and shrinks away once the bar
+   pins. */
 .document-header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  /* Tight: the action row is a dozen icon buttons wide and every pixel it gives
+     back goes to the file name, which shares the line with it. Below that the
+     row wraps instead of squeezing the name to nothing (or, on a phone, pushing
+     the last buttons off-screen — the bar is pinned now, so anything that
+     overflows it is unreachable, not merely scrolled past). */
+  gap: 8px;
+  flex-wrap: wrap;
+  row-gap: 10px;
   max-width: var(--content-max-width);
   margin: 0 auto 20px;
-  padding: 0 clamp(22px, 4vw, 46px) 18px;
+  padding: var(--content-pad-top) clamp(22px, 4vw, 46px) 18px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
 
+/* Pinned: slim down to a title strip (the eyebrow and the root path are
+   context you only need on arrival) so the bar eats as little of the reading
+   area as possible, and lift it off the page. padding-top stays untouched —
+   it is what the negative `top` above scrolls out of view. */
+.document-header.is-stuck {
+  padding-top: 10px;
+  padding-bottom: 9px;
+  /* The bar is still in the flow, so shrinking it would drag the whole document
+     up by the height it just lost — a lurch mid-scroll. app.js measures both
+     heights and publishes the difference as --topbar-shrink, which the margin
+     gives back, keeping the flow (and the reading position) perfectly still. */
+  margin-bottom: calc(20px + var(--topbar-shrink, 0px));
+  box-shadow: 0 10px 18px -14px rgba(0, 0, 0, 0.55);
+}
+
+.document-header.is-stuck .eyebrow,
+.document-header.is-stuck .content-root,
+.document-header.is-stuck .doc-meta {
+  display: none;
+}
+
+.document-header.is-stuck .document-heading h2 {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .document-header > .document-heading {
-  flex: 1;
+  /* Basis, not shrink-to-nothing: the name keeps a readable width and the
+     buttons wrap below once there is genuinely no room for both. */
+  flex: 1 1 140px;
   min-width: 0;
+}
+
+.document-heading h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.topbar-collapse {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.app-shell.is-topbar-hidden .document-header {
+  display: none;
+}
+
+/* Floating button to bring the bar back; only shown while it is hidden. Sits
+   just left of the fixed TOC toggle so the two never overlap (and slides into
+   its slot once the TOC toggle is gone, below 1180px). */
+.topbar-show {
+  display: none;
+  position: fixed;
+  top: 14px;
+  right: 56px;
+  z-index: 30;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  font-size: 13px;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.topbar-show:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.app-shell.is-topbar-hidden .topbar-show {
+  display: grid;
 }
 
 .sidebar-collapse {
@@ -2394,6 +2504,7 @@ body.editor-fs-lock {
 .app-shell.is-focus .toc-panel,
 .app-shell.is-focus .toc-show,
 .app-shell.is-focus .document-header,
+.app-shell.is-focus .topbar-show,
 .app-shell.is-focus .back-to-top {
   display: none !important;
 }
@@ -2403,7 +2514,7 @@ body.editor-fs-lock {
 }
 
 .app-shell.is-focus .content-panel {
-  padding-top: 56px;
+  padding-top: calc(56px - var(--content-pad-top));
 }
 
 .app-shell.is-focus .markdown-body {
@@ -2588,7 +2699,8 @@ body.editor-fs-lock {
 
 .toc-panel {
   position: sticky;
-  top: 0;
+  /* Matches the gap the pane's top padding used to give it. */
+  top: var(--content-pad-top);
   align-self: start;
   max-height: calc(100vh - 60px);
   overflow: auto;
@@ -2829,13 +2941,15 @@ body.editor-fs-lock {
   text-transform: uppercase;
 }
 
+/* --topbar-h is the floating bar's visible height, published by app.js (0 when
+   the bar is hidden), so an anchor jump lands the heading below it. */
 .markdown-body h1[id],
 .markdown-body h2[id],
 .markdown-body h3[id],
 .markdown-body h4[id],
 .markdown-body h5[id],
 .markdown-body h6[id] {
-  scroll-margin-top: 24px;
+  scroll-margin-top: calc(var(--topbar-h, 0px) + 24px);
 }
 
 .markdown-body {
@@ -2977,6 +3091,11 @@ body.editor-fs-lock {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace;
   font-size: 0.9em;
   padding: 0.18em 0.36em;
+  /* `anywhere`, not `break-word`: only `anywhere` also shrinks the min-content
+     width, which is what keeps a long `--flag=value` from widening the column
+     on a narrow screen. Inline only — a fenced block scrolls inside its <pre>
+     (see .markdown-body pre code below). */
+  overflow-wrap: anywhere;
 }
 
 .markdown-body pre {
@@ -3025,6 +3144,9 @@ body.editor-fs-lock {
 .markdown-body pre code {
   background: transparent;
   padding: 0;
+  /* Undo the inline-code wrap: a fenced block keeps its lines intact and
+     scrolls sideways instead. */
+  overflow-wrap: normal;
 }
 
 .markdown-body pre.mermaid {
@@ -3870,6 +3992,10 @@ body.editor-fs-lock {
   .is-toc-hidden .toc-show {
     display: none;
   }
+
+  .topbar-show {
+    right: 14px;
+  }
 }
 
 @media (max-width: 820px) {
@@ -3879,7 +4005,12 @@ body.editor-fs-lock {
   }
 
   .app-shell {
-    grid-template-columns: 1fr;
+    /* minmax(0, …), not a bare 1fr: `1fr` means minmax(auto, 1fr), and that
+       `auto` minimum is the track's min-content — one unbreakable token deep in
+       the document stretched the track (and with it the sidebar, the bar and
+       the page) past the viewport. The desktop track has always been minmax(0);
+       this one was the odd one out. */
+    grid-template-columns: minmax(0, 1fr);
     /* Sidebar/content are no longer 100vh here, so let the page scroll. */
     height: auto;
     overflow: visible;
@@ -3897,12 +4028,19 @@ body.editor-fs-lock {
     height: auto;
     min-height: 54vh;
     overflow: visible;
-    padding: 22px 14px;
+    --content-pad-top: 22px;
+    padding: 0 14px var(--content-pad-top);
   }
 
   .markdown-body {
     border-radius: 8px;
     padding: 20px;
+  }
+
+  /* Phone: the action row never fits beside the name, so give it its own line
+     rather than letting it overflow a bar that is pinned to the top edge. */
+  .document-header > .document-heading {
+    flex: 1 1 100%;
   }
 }
 
@@ -3924,6 +4062,9 @@ body.editor-fs-lock {
 
   .sidebar,
   .document-header,
+  .topbar-show,
+  .bookmark-fab,
+  .back-to-top,
   .toc-panel,
   .diagram-overlay,
   .mermaid-toolbar,
@@ -3953,6 +4094,9 @@ body.editor-fs-lock {
   .content-with-toc {
     display: block !important;
     grid-template-columns: none !important;
+    /* The pane's top padding lives here now (see .content-with-toc above) — the
+       printed page takes its spacing from the @page margins instead. */
+    padding-top: 0 !important;
   }
 
   .markdown-body {

@@ -21,6 +21,8 @@ from markwright import state
 from markwright.files import (
     build_tree,
     collect_tree_metadata,
+    invalidate_scan_cache,
+    is_discoverable,
     safe_path,
     scan_markdown_files,
     search_files,
@@ -348,7 +350,7 @@ def api_search():
 @app.route("/raw/<path:filename>")
 def raw(filename):
     bare = filename.split("#", 1)[0]
-    if bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         abort(404)
     target = safe_path(bare)
     if not target.is_file():
@@ -369,7 +371,7 @@ def api_save():
     content = payload.get("content")
     if not bare or content is None:
         return jsonify({"error": _("file and content are required")}), 400
-    if bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         return jsonify({"error": _("not found")}), 404
     target = safe_path(bare)
     if not target.is_file():
@@ -397,7 +399,7 @@ def api_toggle_task():
     # bool is a subclass of int, so reject it as an index explicitly.
     if not bare or not isinstance(index, int) or isinstance(index, bool) or not isinstance(checked, bool):
         return jsonify({"error": _("file, index and checked are required")}), 400
-    if bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         return jsonify({"error": _("not found")}), 404
     target = safe_path(bare)
     if not target.is_file() or target.suffix.lower() == ".rst":
@@ -459,6 +461,7 @@ def api_file_new():
         target.write_text(content, encoding="utf-8")
     except OSError as exc:
         return jsonify({"error": str(exc)}), 500
+    invalidate_scan_cache(state.content_dir())
     return jsonify({"ok": True, "file": rel})
 
 
@@ -471,7 +474,7 @@ def api_file_rename():
         return jsonify({"error": _("This source is read-only")}), 403
     payload = request.get_json(silent=True) or {}
     src_rel = (payload.get("file") or "").strip().split("#", 1)[0]
-    if not src_rel or src_rel not in scan_markdown_files():
+    if not is_discoverable(src_rel):
         return jsonify({"error": _("not found")}), 404
     source = safe_path(src_rel)
     if not source.is_file():
@@ -490,6 +493,7 @@ def api_file_rename():
         source.rename(target)
     except OSError as exc:
         return jsonify({"error": str(exc)}), 500
+    invalidate_scan_cache(state.content_dir())
     return jsonify({"ok": True, "file": dest_rel})
 
 
@@ -501,7 +505,7 @@ def api_file_delete():
         return jsonify({"error": _("This source is read-only")}), 403
     payload = request.get_json(silent=True) or {}
     rel = (payload.get("file") or "").strip().split("#", 1)[0]
-    if not rel or rel not in scan_markdown_files():
+    if not is_discoverable(rel):
         return jsonify({"error": _("not found")}), 404
     target = safe_path(rel)
     if not target.is_file():
@@ -510,6 +514,7 @@ def api_file_delete():
         target.unlink()
     except OSError as exc:
         return jsonify({"error": str(exc)}), 500
+    invalidate_scan_cache(state.content_dir())
     return jsonify({"ok": True})
 
 
@@ -533,7 +538,7 @@ def api_upload_asset():
     if not is_local_source():
         return jsonify({"error": _("This source is read-only")}), 403
     doc = (request.form.get("file") or "").strip().split("#", 1)[0]
-    if not doc or doc not in scan_markdown_files():
+    if not is_discoverable(doc):
         return jsonify({"error": _("not found")}), 404
     upload = request.files.get("image")
     if not upload or not upload.filename:
@@ -577,7 +582,7 @@ def api_render():
     content = payload.get("content")
     if not bare or content is None:
         return jsonify({"error": _("file and content are required")}), 400
-    if bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         return jsonify({"error": _("not found")}), 404
     rel = safe_path(bare).relative_to(state.content_dir())
     if rel.suffix.lower() == ".rst":
@@ -592,7 +597,7 @@ def api_mtime():
     bare = (request.args.get("file") or "").strip().split("#", 1)[0]
     if not bare:
         return jsonify({"error": _("file is required")}), 400
-    if bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         return jsonify({"error": _("not found")}), 404
     target = safe_path(bare)
     try:
@@ -645,7 +650,7 @@ from markwright.export import (
 @app.route("/export/pdf")
 def export_pdf():
     bare = (request.args.get("file") or "").strip().split("#", 1)[0]
-    if not bare or bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         abort(404)
     target = safe_path(bare)
     if not target.is_file():
@@ -811,7 +816,7 @@ def export_pdf():
 @app.route("/export/docx")
 def export_docx():
     bare = (request.args.get("file") or "").strip().split("#", 1)[0]
-    if not bare or bare not in scan_markdown_files():
+    if not is_discoverable(bare):
         abort(404)
     target = safe_path(bare)
     if not target.is_file():

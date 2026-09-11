@@ -200,6 +200,7 @@
       </aside>
 
       <button class="sidebar-show" id="sidebar-show" type="button" title="{{ _('Show sidebar') }}" aria-label="{{ _('Show sidebar') }}" aria-controls="sidebar" aria-expanded="true">☰</button>
+      <button class="topbar-show" id="topbar-show" type="button" title="{{ _('Show top bar (h)') }}" aria-label="{{ _('Show top bar') }}" aria-controls="app-shell" aria-expanded="false">▼</button>
 
       <main class="content-panel" id="content-panel">
         <div class="content-with-toc {% if toc %}has-toc{% endif %}">
@@ -302,6 +303,7 @@
                   </div>
                 </div>
               {% endif %}
+              <button class="icon-button topbar-collapse" id="topbar-collapse" type="button" title="{{ _('Hide top bar (h)') }}" aria-label="{{ _('Hide top bar') }}" aria-controls="app-shell" aria-expanded="true">▲</button>
             </header>
 
             <article class="markdown-body">
@@ -535,6 +537,7 @@
               <div class="shortcut-row"><dt><kbd>?</kbd></dt><dd>{{ _('Show this help') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>/</kbd></dt><dd>{{ _('Search files') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>b</kbd></dt><dd>{{ _('Toggle sidebar') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>h</kbd></dt><dd>{{ _('Toggle top bar') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>t</kbd></dt><dd>{{ _('Back to top') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>f</kbd></dt><dd>{{ _('Toggle focus reading mode') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>Esc</kbd></dt><dd>{{ _('Close dialogs / exit modes') }}</dd></div>
@@ -579,6 +582,7 @@
               <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>H</kbd></dt><dd>{{ _('Filter headings') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>B</kbd></dt><dd>{{ _('Toggle sidebar') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>C</kbd></dt><dd>{{ _('Toggle table of contents') }}</dd></div>
+              <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>P</kbd></dt><dd>{{ _('Toggle top bar') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>D</kbd></dt><dd>{{ _('Export (PDF / Word)') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>A</kbd></dt><dd>{{ _('File actions') }}</dd></div>
               <div class="shortcut-row"><dt><kbd>Alt</kbd> + <kbd>M</kbd></dt><dd>{{ _('Bookmarks') }}</dd></div>

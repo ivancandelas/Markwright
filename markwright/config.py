@@ -40,6 +40,22 @@ URL_PREFIXES = ("http://", "https://", "git://", "ssh://", "git@")
 SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 IGNORED_DIRS = {".git", ".venv", "venv", "__pycache__", "node_modules", ".mypy_cache", ".pytest_cache"}
+"""Directories the scanner never descends into. This is the built-in baseline;
+a source can add its own via ``IGNORE_FILE_NAME`` or ``IGNORE_ENV_VAR`` — see
+``markwright.files.ignored_for``."""
+
+IGNORE_FILE_NAME = ".markwrightignore"
+"""Optional file at the root of a served directory listing extra directories to
+skip, one per line (``#`` comments and blank lines ignored). A bare name skips
+every directory so named at any depth; a value containing ``/`` is a
+root-relative directory path. Needed because the built-in set can't know about a
+tree's own bulk — e.g. a repo root holding dozens of git worktrees, where the
+same few hundred docs are found once per worktree."""
+
+IGNORE_ENV_VAR = "MARKWRIGHT_IGNORE"
+"""Same syntax as ``IGNORE_FILE_NAME`` but ``os.pathsep``-separated and applied
+to every source, for when you can't write into the tree being served."""
+
 ALLOWED_ASSET_EXTENSIONS = {
     ".apng",
     ".avif",

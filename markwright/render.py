@@ -31,6 +31,7 @@ from markwright.markdown_ext import (
     PageBreakExtension,
     StrikethroughExtension,
     TaskListExtension,
+    github_slugify,
 )
 
 ALLOWED_TAGS = set(bleach.sanitizer.ALLOWED_TAGS).union({
@@ -152,7 +153,11 @@ def render_markdown_source(rel_path, source):
                 "guess_lang": False,
                 "linenums": False,
                 "css_class": "codehilite",
-            }
+            },
+            # Heading ids must match the slugs GitHub generates, or a
+            # hand-written index of `[Title](#title)` links breaks — see
+            # `github_slugify`.
+            "toc": {"slugify": github_slugify, "separator": "-"},
         },
         output_format="html5",
     )

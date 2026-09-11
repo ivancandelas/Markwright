@@ -31,26 +31,36 @@ Flask app whose web layer (the `Flask` object, all `@app.route` handlers, Babel/
 
 `markwright/` modules:
 - **`state.py`** — the active content dir, in **two layers**: the process default (`CONTENT_DIR`, chosen at startup) and a per-session override living in the signed session cookie. Read it **only** as `state.content_dir()`, which layers one on the other; reading `state.CONTENT_DIR` from a request path serves the process default to everyone (see "Per-session content dir"), and `from state import CONTENT_DIR` freezes a stale binding that sees nothing at all. Also holds `principal()`/`ensure_principal()`, the identity hook.
-- **`config.py`** — static constants: cache/preset layout, asset/logo allowlists, git-URL prefixes, `IGNORED_DIRS`, `RECENTS_LIMIT`/`PRINCIPALS_LIMIT`, plus `load_secret_key()` (the persisted session-signing key).
+- **`config.py`** — static constants: cache/preset layout, asset/logo allowlists, git-URL prefixes, `IGNORED_DIRS` + `IGNORE_FILE_NAME`/`IGNORE_ENV_VAR`, `RECENTS_LIMIT`/`PRINCIPALS_LIMIT`, plus `load_secret_key()` (the persisted session-signing key).
 - **`links.py`** — `is_local_reference` / `resolve_reference` (local-ref gate + resolver, shared by both rewriters).
 - **`frontmatter.py`** — `extract_frontmatter` + the GitHub-style nested-table panel.
 - **`markdown_ext.py`** — all custom Python-Markdown extensions (priorities below) + `MERMAID_BLOCK_RE`.
 - **`render.py`** — `sanitize_html` (the bleach allowlist), `render_markdown`, `render_rst`, `rewrite_local_links`.
-- **`files.py`** — `safe_path` (traversal guard), `scan_markdown_files`, `build_tree`, `collect_tree_metadata`.
+- **`files.py`** — `safe_path` (traversal guard), `scan_markdown_files`, `is_discoverable`, `ignored_for`, `build_tree`, `collect_tree_metadata` (see "Scan cost on a large tree").
 - **`tasks.py`** — `toggle_task_marker` (flips the Nth `[ ]`↔`[x]` task-list checkbox in *source* markdown, skipping fenced code; backs `/api/toggle-task`).
 - **`sources.py`** — runtime source switching: `set_content_dir`, git clone/pull, and the `sources.json` store (per-principal recents buckets + shared fallback, last-file memory, `all_referenced_paths`).
 - **`presets.py`** — PDF-preset storage + logo/cover-image cleanup.
 - **`export.py`** — the entire PDF + DOCX pipeline and its shared token/header/footer/cover helpers + preset serialization (no routes; the `/export/*` and `/api/pdf-presets*` handlers in `app.py` call into it).
 
-Routes (all in `app.py`): `/` renders the viewer; `/asset/<path>` serves local images + non-markdown files; `/raw/<path>` returns raw markdown as `text/plain` (source-view toggle); `/api/source*` drive the source picker; `/api/save` + `/api/file/*` + `/api/upload-asset` + `/api/render` back the editor (local sources only); `/api/toggle-task` persists a single task-list checkbox toggle; `/api/search` full-text searches the active source; `/export/pdf` and `/export/docx` (via pandoc); `/api/pdf-presets*` manage presets. Templates in `templates/index.html`; client behavior (theme/font/width/font-size selectors, sidebar collapse + floating re-open, bidirectional TOC↔content scroll sync, TOC filter box, tree collapse + sort, search filter, scroll persistence, mermaid overlay, copy buttons, export popover + preset manager modal, keyboard shortcuts + Alt accelerators) in `static/js/app.js`.
+Routes (all in `app.py`): `/` renders the viewer; `/asset/<path>` serves local images + non-markdown files; `/raw/<path>` returns raw markdown as `text/plain` (source-view toggle); `/api/source*` drive the source picker; `/api/save` + `/api/file/*` + `/api/upload-asset` + `/api/render` back the editor (local sources only); `/api/toggle-task` persists a single task-list checkbox toggle; `/api/search` full-text searches the active source; `/export/pdf` and `/export/docx` (via pandoc); `/api/pdf-presets*` manage presets. Templates in `templates/index.html`; client behavior (theme/font/width/font-size selectors, sidebar collapse + floating re-open, the floating document bar, bidirectional TOC↔content scroll sync, TOC filter box, tree collapse + sort, search filter, scroll persistence, mermaid overlay, copy buttons, export popover + preset manager modal, keyboard shortcuts + Alt accelerators) in `static/js/app.js`.
 
 ### Request flow for `/`
 
-1. `scan_markdown_files()` walks `CONTENT_DIR` recursively, skipping `IGNORED_DIRS` (`.git`, `.venv`, `__pycache__`, etc.).
+1. `scan_markdown_files()` walks `CONTENT_DIR` recursively, skipping every directory in `ignored_for()` (built-in `IGNORED_DIRS` — `.git`, `.venv`, `__pycache__`, … — plus the source's own `.markwrightignore`). Result cached for `SCAN_TTL_SECONDS`.
 2. `build_tree()` turns the flat path list into a nested dict the Jinja `render_tree` macro recurses over.
 3. `?file=` picks the current doc; `safe_path()` validates it stays under `CONTENT_DIR`.
 4. `render_markdown()` runs Python-Markdown with `extra`, `tables`, `fenced_code`, `codehilite`, `sane_lists`, `toc`, plus custom `LocalPathExtension`.
 5. Output is sanitized via `bleach.clean()` against an explicit allowlist before injection with `|safe`.
+
+### Scan cost on a large tree
+
+A full `os.walk` of the served dir is the most expensive thing a request can do, and it used to run on *every* request: `index()` needs the listing for the sidebar, but nine other routes called `scan_markdown_files()` only to ask "is this path a doc the sidebar lists?". On a 34k-directory source that guard alone cost ~3.4s — and `/api/mtime` carries it, which the live-reload poller hits **once a second**, so walks piled up on top of each other and starved the page load they were supposed to be watching. Three pieces fix it:
+
+- **`is_discoverable(rel)`** is an O(1) exact equivalent of `rel in scan_markdown_files()` and is what every single-document route now uses. The scan set is exactly *(a)* an existing file whose name `_is_wanted` matches, *(b)* with no parent directory in `ignored_for()` — both decidable from the path plus one `stat`. It also rejects `.`/`..`/empty components so only the spelling the scanner emits is accepted (`a/b.md`, never `./a//b.md`). One deliberate divergence: `os.walk` doesn't follow directory symlinks, so a doc reachable only *through* an in-root symlink isn't listed but is accepted here — still inside the served dir (same `resolve()` + `relative_to()` check as `safe_path`), so no traversal boundary moves. **A new doc route wants this, not a membership test.**
+- **`scan_markdown_files()` and `collect_tree_metadata()` are cached** per served dir for `SCAN_TTL_SECONDS` (5s), behind one lock, capped at `_SCAN_CACHE_LIMIT` roots (sessions may hold different ones). `scan_markdown_files` hands back a private copy so a caller can't mutate the cached list. Create/rename/delete *through the app* calls `invalidate_scan_cache(state.content_dir())`, so only changes made outside it wait out the TTL. A source switch needs no invalidation — the cache is keyed on the root.
+- **`.markwrightignore`** (`IGNORE_FILE_NAME`, at the root of the served dir) adds directories to skip, one per line, `#` comments allowed: a bare name skips any directory so named at any depth, a value containing `/` is a root-relative path. `MARKWRIGHT_IGNORE` (`IGNORE_ENV_VAR`, `os.pathsep`-separated) does the same for every source when you can't write into the tree. `ignored_for(root)` unions all three and is cached on the same TTL, so editing the file takes effect within 5s. This exists because the built-in set can't know a tree's own bulk — a repo root holding 32 git worktrees finds the same few hundred docs 32 times over, and the sidebar payload (one `<details>` per directory) is what the browser then has to parse.
+
+`is_discoverable` and the walk **must agree**; they share `ignored_for` for exactly that reason. Changing the ignore semantics in one without the other makes a doc unlistable-but-readable (harmless) or listable-but-404 (not).
 
 ### Local link rewriting
 
@@ -104,6 +114,17 @@ Registered in `render_markdown()` alongside the standard extensions:
 - `EmojiExtension` — treeprocessor at priority **11** (after inline so `<code>` exists as elements and is skipped). Runs `emoji.emojize(..., language="alias")` on text/tail nodes outside `<code>`/`<pre>`. No-ops if `emoji` isn't importable.
 
 Both indented-line skips matter: any preprocessor mutating raw text should bail on lines starting with 4 spaces or a tab, or it corrupts indented code blocks.
+
+### Heading ids (GitHub-compatible slugs)
+
+The `toc` extension is configured with `slugify=github_slugify` (`markwright/markdown_ext.py`) instead of Python-Markdown's default, because the default breaks any hand-written index of `[Title](#title)` links copied from a GitHub-rendered view. Two divergences, both silent:
+
+- **Accents.** The default NFKD-folds to ASCII, so `## 3. Facturación electrónica` gets `id="3-facturacion-electronica"` while the index links to `#3-facturación-electrónica`.
+- **Separator collapsing.** The default replaces a *run* of whitespace/dashes with a single `-`; GitHub only *removes* the punctuation and then maps each surviving space to one dash. So `## 1. Proyecto KIVA / PGM (Odoo 19 · inmobiliario)` is `1-proyecto-kiva--pgm-odoo-19--inmobiliario` on GitHub (double dashes where the ` / ` and ` (` were) but `1-proyecto-kiva-pgm-odoo-19-inmobiliario` by default.
+
+`github_slugify` mirrors `github-slugger`: lowercase, drop every char that isn't a letter, digit, combining mark, `_` or `-`, then map each space to the separator. **Combining marks are kept on purpose** — that's what preserves the U+FE0F in `## ⚠️ Credenciales`, whose GitHub slug really does carry an empty-looking segment (`11-️-credenciales-y-accesos`).
+
+Two knock-on notes: uniquifying is still Python-Markdown's `toc.unique`, which suffixes `_1` where GitHub uses `-1` (only visible on repeated heading text); and because slugs changed, a **position bookmark** saved against an old accented id no longer resolves by `id` and falls back to its stored `y` offset (`bookmarkTargetTop`).
 
 ### Interactive task-list checkboxes
 
@@ -223,17 +244,33 @@ CRUD routes: `GET /api/pdf-presets` (lists via `_serialize_preset()` — exposes
 
 Two layers, both in `static/js/app.js`, documented together in the `#shortcuts-modal` help dialog (⌨ button or `?`):
 
-- **Single-key** (`setupShortcuts`): `?` help, `/` search, `b` sidebar, `s` source view, `e` edit, `t` back to top (`f` focus mode lives in `setupFocusMode`). They **bail while typing or editing** (`INPUT`/`TEXTAREA`/`contentEditable`/`.CodeMirror`, or `editActive`) and while a modifier is held, so they can't fire mid-word.
-- **Alt accelerators** (`setupAltAccelerators`): OS-style access keys — `Alt+E` edit, `Alt+S` source, `Alt+F` filter files, `Alt+H` filter headings, `Alt+B` sidebar, `Alt+C` contents, `Alt+D` export, `Alt+A` file actions, `Alt+M` bookmarks, `Alt+O` open source, `Alt+G` appearance, `Alt+R` focus reading, `Alt+I` frontmatter, `Alt+T` top, `Alt+K` help. **Holding Alt for 300ms paints a badge over every reachable control** (`.accel-badge`); tapping Alt below that never flashes them.
+- **Single-key** (`setupShortcuts`): `?` help, `/` search, `b` sidebar, `h` top bar, `s` source view, `e` edit, `t` back to top (`f` focus mode lives in `setupFocusMode`). They **bail while typing or editing** (`INPUT`/`TEXTAREA`/`contentEditable`/`.CodeMirror`, or `editActive`) and while a modifier is held, so they can't fire mid-word.
+- **Alt accelerators** (`setupAltAccelerators`): OS-style access keys — `Alt+E` edit, `Alt+S` source, `Alt+F` filter files, `Alt+H` filter headings, `Alt+B` sidebar, `Alt+C` contents, `Alt+P` top bar, `Alt+D` export, `Alt+A` file actions, `Alt+M` bookmarks, `Alt+O` open source, `Alt+G` appearance, `Alt+R` focus reading, `Alt+I` frontmatter, `Alt+T` top, `Alt+K` help. **Holding Alt for 300ms paints a badge over every reachable control** (`.accel-badge`); tapping Alt below that never flashes them.
 
 Non-obvious bits of the Alt layer:
 
-- Each entry is `{key, sel, act, reveal}` and resolves to a **DOM control**, not an internal function: `sel` is a list because collapse/show button pairs swap as their panel toggles, and clicking the visible one reuses the handler already wired to it. `reveal` lists openers (outermost first) clicked only while the target is still invisible, so `Alt+F` re-opens a collapsed sidebar and `Alt+O` also opens the `<details>` source picker.
+- Each entry is `{key, sel, act, reveal}` and resolves to a **DOM control**, not an internal function: `sel` is a list because collapse/show button pairs swap as their panel toggles, and clicking the visible one reuses the handler already wired to it. `reveal` lists openers (outermost first) clicked only while the target is still invisible, so `Alt+F` re-opens a collapsed sidebar, `Alt+O` also opens the `<details>` source picker, and every control that lives in the document bar (`Alt+E/S/D/A/M/I/R`) lists `#topbar-show` so a hidden bar comes back instead of swallowing its own accelerators.
 - `visible()` treats a **closed `<details>` as hidden** — Chrome still reports a client rect for its slotted body — but exempts that `<details>`' own `<summary>`, which is the control that opens it.
 - Matching goes through **`event.code`** (`KeyE`), not `event.key`: on macOS `Alt+E` reports `"´"`, and several letters shift on non-US layouts. `ctrlKey` bails so **AltGr** (which reports ctrl+alt) still types characters.
 - Unlike the single-key layer these deliberately **stay live while typing or editing** — that's what the modifier buys, and it makes `Alt+E` the reliable way *out* of the editor.
 - Badges are `position: fixed` divs on `<body>`, not a `::after` on each control: the sidebar/TOC panels clip their overflow and would swallow a pseudo-element badge on an edge control (same reason as `.hover-tooltip`). They re-render on scroll/resize while shown.
 - A bare Alt tap that *did* show badges `preventDefault`s its `keyup` to swallow the browser's "focus the menu bar"; a tap too short to show them is left alone.
+
+### Floating document bar
+
+`.document-header` (file name, root path, reading estimate, and every action button) is **`position: sticky`**: it rides above the document instead of scrolling away, and `#topbar-collapse` (▲ in the bar) / `#topbar-show` (▼, fixed beside the TOC toggle) hide and restore it — the same collapse/show pair the sidebar and TOC use, persisted in `localStorage` (`markwright-topbar-hidden`) and also on `h` / `Alt+P`.
+
+Four non-obvious pieces (`setupFloatingTopbar` in `static/js/app.js`):
+
+- **`.content-panel` carries no top padding.** A sticky offset is resolved against the scroll container's box and engines disagree on whether that box includes its padding (Chrome pins `top: 0` *below* the padding, leaving a band where the document shows through above the bar). The padding moved to `.content-with-toc` — `--content-pad-top`, which also sets `.toc-panel`'s `top` so it keeps the gap it had — so the scroller has no top padding at all and `top: 0` pins flush on any engine. The bar's own `padding-top` supplies the same gap at rest and shrinks away when pinned.
+- **Pinned, it compacts** (`.is-stuck`): eyebrow, root path and `.doc-meta` hide and the title drops to one ellipsized line, so the strip costs ~56px instead of ~190px. The state is read off the bar's own position (`rect.top` vs the scrollport), not a scroll threshold — where it pins doesn't depend on how tall it is, so the two states can't chase each other.
+- **The height it gives up is handed back as margin.** The bar is still in the flow, so compacting would drag the whole document up by the height it just lost — a lurch mid-scroll. `measure()` measures both states in one shot (two forced layouts, only on load/resize/`ResizeObserver`) and publishes the difference as `--topbar-shrink`, which `.is-stuck`'s `margin-bottom` adds back.
+- **Everything that scrolls to a target clears the bar.** `measure()` also publishes the pinned height as `--topbar-h` (0 while hidden) for the headings' `scroll-margin-top`, and as `topbarOffset()` for the JS jumps: the bookmark restore (`spotTopFor`), the TOC→content sync, and `updateActiveToc`'s "already read past" threshold. Without it a jump parks its target *under* the bar.
+
+The action row is `flex-wrap: wrap` with the heading on a `140px` basis (`100%` below 820px, where the buttons never fit beside the name): a pinned bar that overflows is unreachable, not merely scrolled past. Two long-standing layout bugs surfaced with it and are fixed:
+
+- The mobile `.app-shell` track was a bare `1fr` — i.e. `minmax(auto, 1fr)`, whose `auto` minimum is min-content, so one unbreakable token stretched the track and with it the sidebar, the bar and the page (922px on a 420px viewport). It is `minmax(0, 1fr)` now, matching the desktop track. Inline `<code>` also got `overflow-wrap: anywhere` (`normal` again inside `pre`, which scrolls instead) — `anywhere` rather than `break-word` because only it also shrinks the min-content width.
+- `.bookmark-fab` and `.back-to-top` are in the `@media print` hide list, so they no longer print into an exported PDF.
 
 ### TOC filter
 
@@ -297,4 +334,4 @@ The `en` catalog keeps empty `msgstr`s: gettext returns the (English) msgid when
 
 ### State that lives in the browser
 
-`static/js/app.js` persists theme (`markwright-theme`), sidebar collapsed (`markwright-sidebar-hidden`), sidebar scroll (`markwright-sidebar-scroll`), per-file content scroll (`markwright-content-scroll:<path>`), the last-used export preset id (`markwright-export-preset`), the task-checkbox auto-save preference (`markwright-task-autosave`), the search-highlight preference (`markwright-search-highlight`), and per-file unsaved editor drafts (`markwright-draft:<root>:<file>`) in `localStorage`. PDF presets themselves live server-side in `CACHE_DIR`, not the browser (only the *selected* preset id is remembered client-side). Server-side per-client state is limited to the signed session cookie (the anonymous `sid` + the active content dir — see "Per-session content dir"); there is no server-side session *store*. The sidebar search (query + mode + last results) lives in `sessionStorage` (`markwright-search`) instead, so it is per-tab and gone when the tab closes.
+`static/js/app.js` persists theme (`markwright-theme`), sidebar collapsed (`markwright-sidebar-hidden`), the document bar hidden (`markwright-topbar-hidden`), sidebar scroll (`markwright-sidebar-scroll`), per-file content scroll (`markwright-content-scroll:<path>`), the last-used export preset id (`markwright-export-preset`), the task-checkbox auto-save preference (`markwright-task-autosave`), the search-highlight preference (`markwright-search-highlight`), and per-file unsaved editor drafts (`markwright-draft:<root>:<file>`) in `localStorage`. PDF presets themselves live server-side in `CACHE_DIR`, not the browser (only the *selected* preset id is remembered client-side). Server-side per-client state is limited to the signed session cookie (the anonymous `sid` + the active content dir — see "Per-session content dir"); there is no server-side session *store*. The sidebar search (query + mode + last results) lives in `sessionStorage` (`markwright-search`) instead, so it is per-tab and gone when the tab closes.
