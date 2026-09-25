@@ -1145,6 +1145,12 @@ a {
   gap: 2px;
 }
 
+/* The display:flex above beats the UA [hidden] rule, so the name filter's
+   `item.hidden = true` would otherwise leave non-matching files on screen. */
+.tree-file[hidden] {
+  display: none;
+}
+
 .tree-file > .file-link {
   flex: 1 1 auto;
   min-width: 0;
