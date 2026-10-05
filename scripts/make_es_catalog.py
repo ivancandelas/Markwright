@@ -61,6 +61,7 @@ ES = {
     # --- copy button ----------------------------------------------------
     "Copy": "Copiar",
     "Copy code to clipboard": "Copiar el código al portapapeles",
+    "Copy table to clipboard": "Copiar la tabla al portapapeles",
     "Copied!": "¡Copiado!",
     "Failed": "Error",
     # --- tree collapse --------------------------------------------------

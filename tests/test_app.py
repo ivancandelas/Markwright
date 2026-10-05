@@ -694,6 +694,35 @@ class TestRenderMarkdown:
         html_out, _ = appmod.render_markdown(p)
         assert "<ol>" not in html_out
 
+    def test_mermaid_block_renders_as_diagram(self, content_dir):
+        p = content_dir / "doc.md"
+        p.write_text("Text\n\n```mermaid\ngraph TD\n  a --> b\n```\n\nAfter\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert '<pre class="mermaid">graph TD\n  a --&gt; b</pre>' in html_out
+        assert "<p>After</p>" in html_out
+
+    def test_code_block_carries_language_class(self, content_dir):
+        # The client keys the ```markdown preview toggle off this class.
+        p = content_dir / "doc.md"
+        p.write_text("```markdown\n# x\n```\n\n> ```markdown\n> # y\n> ```\n\n```\nplain\n```\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert html_out.count('<code class="language-markdown">') == 2
+        assert "language-markdown\">plain" not in html_out
+
+    def test_mermaid_quoted_inside_wider_fence_stays_literal(self, content_dir):
+        # A ```mermaid example inside a ````markdown block is text of that
+        # block, not a live diagram embedded in it.
+        p = content_dir / "doc.md"
+        p.write_text(
+            "````markdown\n## Grafo\n```mermaid\ngraph TD\n  a --> b\n```\n"
+            "## Modelos\n````\n\n## Reglas\n"
+        )
+        html_out, _ = appmod.render_markdown(p)
+        assert 'class="mermaid"' not in html_out
+        assert "```mermaid" in html_out
+        assert "<h2" in html_out and "Reglas</h2>" in html_out
+        assert "Modelos</h2>" not in html_out
+
     def test_fenced_code_inside_blockquote(self, content_dir):
         # Python-Markdown's fenced_code never matches a `> `-prefixed fence, so
         # without BlockquoteFencePreprocessor the block collapses into an inline
@@ -724,6 +753,41 @@ class TestRenderMarkdown:
         html_out, _ = appmod.render_markdown(p)
         assert '<div class="codehilite">' in html_out
         assert "<p></p>" not in html_out
+
+    def test_fenced_code_inside_list_item_without_blank_line(self, content_dir):
+        # fenced_code only matches a column-0 fence, so one nested under a task
+        # item (and glued to its text) used to collapse into the paragraph as
+        # inline <code>. ListFencePreprocessor renders it as a block in the item.
+        p = content_dir / "doc.md"
+        p.write_text(
+            "- [ ] **Q12** consultas:\n"
+            "      ```sql\n"
+            "      -- comentario\n"
+            "      SELECT 1;\n"
+            "      ```\n"
+            "\n"
+            "- [x] siguiente\n"
+        )
+        html_out, _ = appmod.render_markdown(p)
+        first = html_out[html_out.index("<li") : html_out.index("</li>")]
+        assert '<div class="codehilite">' in first
+        assert "```" not in html_out
+        assert html_out.count("task-list-item-checkbox") == 2
+
+    def test_fence_body_in_list_item_is_not_renormalized(self, content_dir):
+        # A `- key` body line must stay literal code, not become a list marker.
+        p = content_dir / "doc.md"
+        p.write_text("1. uno\n   ```yaml\n   - key: v\n   ```\n2. dos\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert '<div class="codehilite">' in html_out
+        assert "<li>key" not in html_out
+        assert html_out.count("<li>") == 2
+
+    def test_four_space_fence_outside_list_stays_indented_code(self, content_dir):
+        p = content_dir / "doc.md"
+        p.write_text("para\n\n    ```\n    code\n    ```\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert "```" in html_out
 
 
 # --------------------------------------------------------------------------- #

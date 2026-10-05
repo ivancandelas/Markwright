@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-27 08:58-0600\n"
+"POT-Creation-Date: 2026-10-05 10:44-0600\n"
 "PO-Revision-Date: 2026-06-02 17:30-0600\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -18,514 +18,521 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: app.py:254
+#: app.py:256
 msgid "source is required"
 msgstr "Se requiere un origen"
 
-#: app.py:273
+#: app.py:275
 msgid "git command timed out"
 msgstr "El comando git agotó el tiempo de espera"
 
-#: app.py:275
+#: app.py:277
 msgid "git is not installed or not on PATH"
 msgstr "git no está instalado o no está en el PATH"
 
-#: app.py:296
+#: app.py:298
 msgid "path is required"
 msgstr "Se requiere una ruta"
 
-#: app.py:304
+#: app.py:306
 msgid "Cannot remove the active source"
 msgstr "No se puede quitar el origen activo"
 
-#: app.py:309
+#: app.py:311
 msgid "Not found in recents"
 msgstr "No se encontró en los recientes"
 
-#: app.py:366 app.py:392 app.py:445 app.py:471 app.py:501 app.py:534
+#: app.py:368 app.py:394 app.py:447 app.py:474 app.py:505 app.py:539
 msgid "This source is read-only"
 msgstr "Este origen es de solo lectura"
 
-#: app.py:371 app.py:579
+#: app.py:373 app.py:584
 msgid "file and content are required"
 msgstr "se requieren el archivo y el contenido"
 
-#: app.py:373 app.py:376 app.py:401 app.py:404 app.py:475 app.py:478 app.py:505
-#: app.py:508 app.py:537 app.py:581 app.py:596
+#: app.py:375 app.py:378 app.py:403 app.py:406 app.py:478 app.py:481 app.py:509
+#: app.py:512 app.py:542 app.py:586 app.py:601
 msgid "not found"
 msgstr "no encontrado"
 
-#: app.py:399
+#: app.py:401
 msgid "file, index and checked are required"
 msgstr "se requieren el archivo, el índice y el estado"
 
-#: app.py:409
+#: app.py:411
 msgid "task checkbox not found"
 msgstr "casilla de tarea no encontrada"
 
-#: app.py:428
+#: app.py:430
 msgid "A file name is required"
 msgstr "Se requiere un nombre de archivo"
 
-#: app.py:435
+#: app.py:437
 msgid "Use a .md or .rst file extension"
 msgstr "Usa una extensión de archivo .md o .rst"
 
-#: app.py:453 app.py:487
+#: app.py:455 app.py:490
 msgid "A file with that name already exists"
 msgstr "Ya existe un archivo con ese nombre"
 
-#: app.py:540
+#: app.py:545
 msgid "No image provided"
 msgstr "No se proporcionó ninguna imagen"
 
-#: app.py:543 app.py:1037
+#: app.py:548 app.py:1042
 #, python-format
 msgid "Unsupported image format: %(ext)s"
 msgstr "Formato de imagen no soportado: %(ext)s"
 
-#: app.py:543 app.py:1021 app.py:1037
+#: app.py:548 app.py:1026 app.py:1042
 msgid "(no extension)"
 msgstr "(sin extensión)"
 
-#: app.py:546
+#: app.py:551
 msgid "The image exceeds the 10 MB limit"
 msgstr "La imagen supera el límite de 10 MB"
 
-#: app.py:594
+#: app.py:599
 msgid "file is required"
 msgstr "Se requiere un archivo"
 
-#: app.py:657
+#: app.py:662
 msgid "Playwright is not installed. Run: uv pip install playwright"
 msgstr "Playwright no está instalado. Ejecuta: uv pip install playwright"
 
-#: app.py:822 app.py:928
+#: app.py:827 app.py:933
 msgid "Pandoc is not installed. Install it (e.g. `apt install pandoc`) to export to Word."
 msgstr "Pandoc no está instalado. Instálalo (p. ej. `apt install pandoc`) para exportar a Word."
 
-#: app.py:934
+#: app.py:939
 msgid "Could not generate the DOCX. See the server logs for details."
 msgstr "No se pudo generar el DOCX. Consulta los registros del servidor para más detalles."
 
-#: app.py:959 static/js/app.js:3465
+#: app.py:964 static/js/app.js:3609
 msgid "Name is required"
 msgstr "El nombre es obligatorio"
 
-#: app.py:1021
+#: app.py:1026
 #, python-format
 msgid "Unsupported logo format: %(ext)s"
 msgstr "Formato de logo no soportado: %(ext)s"
 
-#: app.py:1024
+#: app.py:1029
 msgid "The logo exceeds the 2 MB limit"
 msgstr "El logo supera el límite de 2 MB"
 
-#: app.py:1040
+#: app.py:1045
 msgid "The cover image exceeds the 2 MB limit"
 msgstr "La imagen de portada supera el límite de 2 MB"
 
-#: app.py:1059 app.py:1089
+#: app.py:1064 app.py:1094
 msgid "Not found"
 msgstr "No encontrado"
 
-#: static/js/app.js:565
+#: static/js/app.js:564
 msgid "This document has no frontmatter"
 msgstr "Este documento no tiene frontmatter"
 
-#: static/js/app.js:567
+#: static/js/app.js:566
 msgid "Frontmatter hidden — click to show"
 msgstr "Frontmatter oculto — haz clic para mostrar"
 
-#: static/js/app.js:568
+#: static/js/app.js:567
 msgid "Hide frontmatter panel"
 msgstr "Ocultar el panel de frontmatter"
 
-#: static/js/app.js:596 static/js/app.js:627 static/js/app.js:657
+#: static/js/app.js:595 static/js/app.js:626 static/js/app.js:656
+#: static/js/app.js:995
 msgid "Show source"
 msgstr "Ver código"
 
-#: static/js/app.js:597
+#: static/js/app.js:596
 msgid "Toggle diagram source"
 msgstr "Alternar el código del diagrama"
 
-#: static/js/app.js:657
+#: static/js/app.js:656
 msgid "Show diagram"
 msgstr "Ver diagrama"
 
-#: static/js/app.js:788
+#: static/js/app.js:787
 msgid "Font size (default)"
 msgstr "Tamaño de fuente (predeterminado)"
 
-#: static/js/app.js:789
+#: static/js/app.js:788
 #, python-format
 msgid "Reset font size to %(size)s"
 msgstr "Restablecer el tamaño de fuente a %(size)s"
 
-#: static/js/app.js:817 static/js/app.js:3271
+#: static/js/app.js:816 static/js/app.js:3415
 msgid "System default"
 msgstr "Predeterminado del sistema"
 
-#: static/js/app.js:847 static/js/app.js:887
+#: static/js/app.js:846 static/js/app.js:930 static/js/app.js:958
 msgid "Copy"
 msgstr "Copiar"
 
-#: static/js/app.js:848
+#: static/js/app.js:847
 msgid "Copy code to clipboard"
 msgstr "Copiar el código al portapapeles"
 
-#: static/js/app.js:881
+#: static/js/app.js:873
+msgid "Copy table to clipboard"
+msgstr "Copiar la tabla al portapapeles"
+
+#: static/js/app.js:924 static/js/app.js:952
 msgid "Copied!"
 msgstr "¡Copiado!"
 
-#: static/js/app.js:884 static/js/app.js:3192 static/js/app.js:3520
-#: static/js/app.js:3545 static/js/app.js:3570
+#: static/js/app.js:927 static/js/app.js:955 static/js/app.js:1023
+#: static/js/app.js:3336 static/js/app.js:3664 static/js/app.js:3689
+#: static/js/app.js:3714
 msgid "Failed"
 msgstr "Error"
 
-#: static/js/app.js:909
+#: static/js/app.js:986 static/js/app.js:995 static/js/app.js:1024
+#: static/js/app.js:2515
+msgid "Preview"
+msgstr "Vista previa"
+
+#: static/js/app.js:1053
 #, python-format
 msgid "%(words)s words · ~%(min)s min read"
 msgstr "%(words)s palabras · ~%(min)s min de lectura"
 
-#: static/js/app.js:920 static/js/app.js:921
+#: static/js/app.js:1064 static/js/app.js:1065
 msgid "Copy link to this section"
 msgstr "Copiar enlace a esta sección"
 
-#: static/js/app.js:945 static/js/app.js:946 templates/index.html:541
+#: static/js/app.js:1089 static/js/app.js:1090 templates/index.html:541
 #: templates/index.html:593
 msgid "Back to top"
 msgstr "Volver arriba"
 
-#: static/js/app.js:977
+#: static/js/app.js:1121
 msgid "Exit focus reading (Esc)"
 msgstr "Salir de la lectura enfocada (Esc)"
 
-#: static/js/app.js:978
+#: static/js/app.js:1122
 msgid "Exit focus reading"
 msgstr "Salir de la lectura enfocada"
 
-#: static/js/app.js:992 templates/index.html:97
+#: static/js/app.js:1136 templates/index.html:97
 msgid "Narrow"
 msgstr "Estrecho"
 
-#: static/js/app.js:992 templates/index.html:87 templates/index.html:98
+#: static/js/app.js:1136 templates/index.html:87 templates/index.html:98
 msgid "Default"
 msgstr "Predeterminado"
 
-#: static/js/app.js:992 templates/index.html:99
+#: static/js/app.js:1136 templates/index.html:99
 msgid "Wide"
 msgstr "Ancho"
 
-#: static/js/app.js:992 templates/index.html:100
+#: static/js/app.js:1136 templates/index.html:100
 msgid "Full"
 msgstr "Completo"
 
-#: static/js/app.js:997 static/js/app.js:998
+#: static/js/app.js:1141 static/js/app.js:1142
 msgid "Change content width"
 msgstr "Cambiar el ancho del contenido"
 
-#: static/js/app.js:1031
+#: static/js/app.js:1175
 msgid "Almost done"
 msgstr "Casi terminado"
 
-#: static/js/app.js:1032
+#: static/js/app.js:1176
 #, python-format
 msgid "~%(min)s min left"
 msgstr "~%(min)s min restantes"
 
-#: static/js/app.js:1172 static/js/app.js:1173 static/js/app.js:1191
+#: static/js/app.js:1316 static/js/app.js:1317 static/js/app.js:1335
 msgid "Remove bookmark"
 msgstr "Quitar marcador"
 
-#: static/js/app.js:1191
+#: static/js/app.js:1335
 msgid "Bookmark this file"
 msgstr "Marcar este archivo"
 
-#: static/js/app.js:1245
+#: static/js/app.js:1389
 msgid "★ Remove file bookmark"
 msgstr "★ Quitar marcador del archivo"
 
-#: static/js/app.js:1245
+#: static/js/app.js:1389
 msgid "☆ Bookmark this file"
 msgstr "☆ Marcar este archivo"
 
-#: static/js/app.js:1343
+#: static/js/app.js:1487
 #, python-format
 msgid "Position at %(px)spx"
 msgstr "Posición en %(px)spx"
 
-#: static/js/app.js:1357
+#: static/js/app.js:1501
 msgid "(untitled)"
 msgstr "(sin título)"
 
-#: static/js/app.js:1363 static/js/app.js:1364
+#: static/js/app.js:1507 static/js/app.js:1508
 msgid "Remove"
 msgstr "Quitar"
 
-#: static/js/app.js:1413
+#: static/js/app.js:1557
 msgid "✓ Bookmarked"
 msgstr "✓ Marcado"
 
-#: static/js/app.js:1417 templates/index.html:251
+#: static/js/app.js:1561 templates/index.html:251
 msgid "+ Bookmark this spot"
 msgstr "+ Marcar esta posición"
 
-#: static/js/app.js:1457 static/js/app.js:1458 templates/index.html:247
+#: static/js/app.js:1601 static/js/app.js:1602 templates/index.html:247
 #: templates/index.html:249 templates/index.html:588
 msgid "Bookmarks"
 msgstr "Marcadores"
 
-#: static/js/app.js:1560
+#: static/js/app.js:1704
 msgid "Expand all"
 msgstr "Expandir todo"
 
-#: static/js/app.js:1560 templates/index.html:159
+#: static/js/app.js:1704 templates/index.html:159
 msgid "Collapse all"
 msgstr "Contraer todo"
 
-#: static/js/app.js:1561
+#: static/js/app.js:1705
 msgid "Expand all folders"
 msgstr "Expandir todas las carpetas"
 
-#: static/js/app.js:1561 templates/index.html:157
+#: static/js/app.js:1705 templates/index.html:157
 msgid "Collapse all folders"
 msgstr "Contraer todas las carpetas"
 
-#: static/js/app.js:1690
+#: static/js/app.js:1834
 msgid "No matches found."
 msgstr "Sin coincidencias."
 
-#: static/js/app.js:1696
+#: static/js/app.js:1840
 #, python-format
 msgid "%(files)s file(s), %(matches)s match(es)"
 msgstr "%(files)s archivo(s), %(matches)s coincidencia(s)"
 
-#: static/js/app.js:1764
+#: static/js/app.js:1908
 msgid "Type at least 2 characters to search file contents."
 msgstr "Escribí al menos 2 caracteres para buscar en el contenido."
 
-#: static/js/app.js:1768
+#: static/js/app.js:1912
 msgid "Searching…"
 msgstr "Buscando…"
 
-#: static/js/app.js:1779
+#: static/js/app.js:1923
 msgid "Search failed."
 msgstr "La búsqueda falló."
 
-#: static/js/app.js:1790
+#: static/js/app.js:1934
 msgid "Search in files..."
 msgstr "Buscar en archivos..."
 
-#: static/js/app.js:1791 templates/index.html:143
+#: static/js/app.js:1935 templates/index.html:143
 msgid "Filter files..."
 msgstr "Filtrar archivos..."
 
-#: static/js/app.js:2021
+#: static/js/app.js:2165
 msgid "Loading…"
 msgstr "Cargando…"
 
-#: static/js/app.js:2030 static/js/app.js:2165
+#: static/js/app.js:2174 static/js/app.js:2309
 #, python-format
 msgid "Failed (%(status)s)"
 msgstr "Error (%(status)s)"
 
-#: static/js/app.js:2034
+#: static/js/app.js:2178
 msgid "Loaded — reloading…"
 msgstr "Cargado — recargando…"
 
-#: static/js/app.js:2156
+#: static/js/app.js:2300
 msgid "Removing…"
 msgstr "Quitando…"
 
-#: static/js/app.js:2169
+#: static/js/app.js:2313
 msgid "Removed — reloading…"
 msgstr "Quitado — recargando…"
 
-#: static/js/app.js:2209
+#: static/js/app.js:2353
 msgid "View rendered"
 msgstr "Ver renderizado"
 
-#: static/js/app.js:2217 templates/index.html:242
+#: static/js/app.js:2361 templates/index.html:242
 msgid "View source"
 msgstr "Ver código fuente"
 
-#: static/js/app.js:2333 templates/index.html:566
+#: static/js/app.js:2477 templates/index.html:566
 msgid "Save"
 msgstr "Guardar"
 
-#: static/js/app.js:2334
+#: static/js/app.js:2478
 msgid "Save (Ctrl+S)"
 msgstr "Guardar (Ctrl+S)"
 
-#: static/js/app.js:2341
+#: static/js/app.js:2485
 msgid "Exit"
 msgstr "Salir"
 
-#: static/js/app.js:2342 templates/index.html:573
+#: static/js/app.js:2486 templates/index.html:573
 msgid "Exit editor"
 msgstr "Salir del editor"
 
-#: static/js/app.js:2346
+#: static/js/app.js:2490
 msgid "Discard changes"
 msgstr "Descartar cambios"
 
-#: static/js/app.js:2347
+#: static/js/app.js:2491
 msgid "Revert to the last saved version"
 msgstr "Revertir a la última versión guardada"
 
-#: static/js/app.js:2360
+#: static/js/app.js:2504
 msgid "Bold (Ctrl+B)"
 msgstr "Negrita (Ctrl+B)"
 
-#: static/js/app.js:2361
+#: static/js/app.js:2505
 msgid "Italic (Ctrl+I)"
 msgstr "Cursiva (Ctrl+I)"
 
-#: static/js/app.js:2362
+#: static/js/app.js:2506
 msgid "Inline code"
 msgstr "Código en línea"
 
-#: static/js/app.js:2363
+#: static/js/app.js:2507
 msgid "Insert link (Ctrl+K)"
 msgstr "Insertar enlace (Ctrl+K)"
 
-#: static/js/app.js:2371
-msgid "Preview"
-msgstr "Vista previa"
-
-#: static/js/app.js:2379
+#: static/js/app.js:2523
 msgid "Sync scroll"
 msgstr "Sincronizar desplazamiento"
 
-#: static/js/app.js:2380
+#: static/js/app.js:2524
 msgid "Keep editor and preview scroll positions aligned"
 msgstr "Mantener alineadas las posiciones de desplazamiento del editor y la vista previa"
 
-#: static/js/app.js:2388 static/js/app.js:2389
+#: static/js/app.js:2532 static/js/app.js:2533
 msgid "Toggle fullscreen"
 msgstr "Pantalla completa"
 
-#: static/js/app.js:2395
+#: static/js/app.js:2539
 msgid "Unsaved changes"
 msgstr "Cambios sin guardar"
 
-#: static/js/app.js:2416
+#: static/js/app.js:2560
 #, python-format
 msgid "An unsaved draft from %(when)s was found. Restore it?"
 msgstr "Se encontró un borrador sin guardar de %(when)s. ¿Restaurarlo?"
 
-#: static/js/app.js:2449
+#: static/js/app.js:2593
 msgid "Stop editing"
 msgstr "Dejar de editar"
 
-#: static/js/app.js:2520
+#: static/js/app.js:2664
 #, python-format
 msgid "%(w)s words · %(c)s chars"
 msgstr "%(w)s palabras · %(c)s caracteres"
 
-#: static/js/app.js:2689
+#: static/js/app.js:2833
 msgid "Uploading image…"
 msgstr "Subiendo imagen…"
 
-#: static/js/app.js:2786 static/js/app.js:3470
+#: static/js/app.js:2930 static/js/app.js:3614
 msgid "Saving…"
 msgstr "Guardando…"
 
-#: static/js/app.js:2803 static/js/app.js:3518
+#: static/js/app.js:2947 static/js/app.js:3662
 msgid "Saved"
 msgstr "Guardado"
 
-#: static/js/app.js:2818 static/js/app.js:2836
+#: static/js/app.js:2962 static/js/app.js:2980
 msgid "Discard unsaved changes?"
 msgstr "¿Descartar los cambios sin guardar?"
 
-#: static/js/app.js:2853 templates/index.html:239
+#: static/js/app.js:2997 templates/index.html:239
 msgid "Edit"
 msgstr "Editar"
 
-#: static/js/app.js:2939
+#: static/js/app.js:3083
 msgid "New file"
 msgstr "Nuevo archivo"
 
-#: static/js/app.js:2941
+#: static/js/app.js:3085
 msgid "notes.md or docs/notes.md"
 msgstr "notas.md o docs/notas.md"
 
-#: static/js/app.js:2942
+#: static/js/app.js:3086
 msgid "Create"
 msgstr "Crear"
 
-#: static/js/app.js:2945
+#: static/js/app.js:3089
 msgid "Rename file"
 msgstr "Renombrar archivo"
 
-#: static/js/app.js:2947
+#: static/js/app.js:3091
 msgid "Rename"
 msgstr "Renombrar"
 
-#: static/js/app.js:2950
+#: static/js/app.js:3094
 #, python-format
 msgid "Delete \"%(name)s\"? This cannot be undone."
 msgstr "¿Eliminar «%(name)s»? Esta acción no se puede deshacer."
 
-#: static/js/app.js:2951 templates/index.html:493
+#: static/js/app.js:3095 templates/index.html:493
 msgid "Delete"
 msgstr "Eliminar"
 
-#: static/js/app.js:2988
+#: static/js/app.js:3132
 msgid "Working…"
 msgstr "Procesando…"
 
-#: static/js/app.js:3150
+#: static/js/app.js:3294
 msgid "Generating…"
 msgstr "Generando…"
 
-#: static/js/app.js:3168 static/js/app.js:3509 static/js/app.js:3539
-#: static/js/app.js:3562
+#: static/js/app.js:3312 static/js/app.js:3653 static/js/app.js:3683
+#: static/js/app.js:3706
 #, python-format
 msgid "Error %(status)s"
 msgstr "Error %(status)s"
 
-#: static/js/app.js:3189
+#: static/js/app.js:3333
 msgid "Done"
 msgstr "Listo"
 
-#: static/js/app.js:3388
+#: static/js/app.js:3532
 msgid "No presets yet."
 msgstr "Aún no hay ajustes."
 
-#: static/js/app.js:3530
+#: static/js/app.js:3674
 msgid "Duplicating…"
 msgstr "Duplicando…"
 
-#: static/js/app.js:3543
+#: static/js/app.js:3687
 msgid "Duplicated"
 msgstr "Duplicado"
 
-#: static/js/app.js:3554
+#: static/js/app.js:3698
 #, python-format
 msgid "Delete preset \"%(name)s\"?"
 msgstr "¿Eliminar el ajuste «%(name)s»?"
 
-#: static/js/app.js:3584
+#: static/js/app.js:3728
 #, python-format
 msgid "Remove \"%(label)s\" from recents and delete the cached clone?"
 msgstr "¿Quitar «%(label)s» de los recientes y eliminar el clon en caché?"
 
-#: static/js/app.js:3902
+#: static/js/app.js:4046
 msgid "Search highlight: on"
 msgstr "Resaltado de búsqueda: activado"
 
-#: static/js/app.js:3902
+#: static/js/app.js:4046
 msgid "Search highlight: off"
 msgstr "Resaltado de búsqueda: desactivado"
 
-#: static/js/app.js:4036
+#: static/js/app.js:4180
 msgid "Auto-save checkboxes: on"
 msgstr "Guardado automático de casillas: activado"
 
-#: static/js/app.js:4037
+#: static/js/app.js:4181
 msgid "Auto-save checkboxes: off (changes won’t be saved)"
 msgstr "Guardado automático de casillas: desactivado (los cambios no se guardarán)"
 

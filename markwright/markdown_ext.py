@@ -18,6 +18,7 @@ from markdown.extensions import Extension
 from markdown.inlinepatterns import InlineProcessor
 from markdown.preprocessors import Preprocessor
 from markdown.treeprocessors import Treeprocessor
+from pygments.formatters import HtmlFormatter
 
 from markwright.links import is_local_reference, resolve_reference
 
@@ -66,16 +67,38 @@ MERMAID_BLOCK_RE = re.compile(
 
 
 class MermaidPreprocessor(Preprocessor):
+    # Walks fences line by line instead of a regex sub so a ```mermaid block
+    # *quoted inside* another fence (e.g. a ````markdown example) stays literal
+    # text of that outer block rather than becoming a live diagram in it. The
+    # closer must repeat the opener exactly, which is how `fenced_code`
+    # pairs them — so both agree on what is inside a code block. An unclosed
+    # opener isn't a fence to `fenced_code` either, so it is skipped over.
     def run(self, lines):
-        text = "\n".join(lines)
-
-        def replace(match):
-            placeholder = self.md.htmlStash.store(
-                f'<pre class="mermaid">{html.escape(match.group("code"))}</pre>'
-            )
-            return f"\n\n{placeholder}\n\n"
-
-        return MERMAID_BLOCK_RE.sub(replace, text).split("\n")
+        out, i = [], 0
+        while i < len(lines):
+            opener = FENCE_OPEN_RE.match(lines[i])
+            close = None
+            if opener:
+                fence = opener.group(1)
+                close = next(
+                    (j for j in range(i + 1, len(lines))
+                     if (m := FENCE_CLOSE_RE.match(lines[j])) and m.group(1) == fence),
+                    None,
+                )
+            if close is None:
+                out.append(lines[i])
+                i += 1
+                continue
+            if fence.startswith("`") and opener.group("info").strip() == "mermaid":
+                code = "\n".join(lines[i + 1:close])
+                placeholder = self.md.htmlStash.store(
+                    f'<pre class="mermaid">{html.escape(code)}</pre>'
+                )
+                out.extend(["", placeholder, ""])
+            else:
+                out.extend(lines[i:close + 1])
+            i = close + 1
+        return out
 
 
 class MermaidExtension(Extension):
@@ -92,11 +115,33 @@ BLOCKQUOTE_PREFIX_RE = re.compile(r"^(?:[ ]{0,3}>[ ]?)+")
 # with an optional info string. The closer is the same char, >= as long, bare.
 FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})[ ]*(?P<info>[^`\n]*)$")
 FENCE_CLOSE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})[ ]*$")
-# Mirror render_markdown_source's codehilite config so a quoted fence is
-# highlighted identically to a top-level one.
-_CODEHILITE_CONFIG = {
-    "codehilite": {"guess_lang": False, "linenums": False, "css_class": "codehilite"}
+class LangCodeFormatter(HtmlFormatter):
+    """Pygments' HTML formatter, but the ``<code>`` carries the fence's
+    language as ``class="language-<lang>"`` (GitHub's convention). Pygments'
+    builtin formatter drops the ``lang_str`` codehilite hands it, so without
+    this the client can't tell a ```markdown block from any other — which the
+    rendered-preview toggle on markdown blocks needs."""
+
+    def __init__(self, lang_str="", **options):
+        super().__init__(**options)
+        self.lang_str = lang_str
+
+    def _wrap_code(self, inner):
+        attr = f' class="{html.escape(self.lang_str)}"' if self.lang_str else ""
+        yield 0, f"<code{attr}>"
+        yield from inner
+        yield 0, "</code>"
+
+
+# Shared by render_markdown_source and the quoted/list fence renderers so a
+# nested fence is highlighted identically to a top-level one.
+CODEHILITE_OPTIONS = {
+    "guess_lang": False,
+    "linenums": False,
+    "css_class": "codehilite",
+    "pygments_formatter": LangCodeFormatter,
 }
+_CODEHILITE_CONFIG = {"codehilite": CODEHILITE_OPTIONS}
 
 
 class BlockquoteFencePreprocessor(Preprocessor):
@@ -171,15 +216,22 @@ class BlockquoteFencePreprocessor(Preprocessor):
         return out
 
     def _render_block(self, block, info):
-        if info.split(" ", 1)[0].lower() == "mermaid":
-            code = "\n".join(block[1:-1])
-            return f'<pre class="mermaid">{html.escape(code)}</pre>'
-        sub = markdown.Markdown(
-            extensions=["fenced_code", "codehilite"],
-            extension_configs=_CODEHILITE_CONFIG,
-            output_format="html5",
-        )
-        return sub.convert("\n".join(block))
+        return _render_fenced_block(block, info)
+
+
+def _render_fenced_block(block, info):
+    """Render a de-indented fence (opener + body + closer lines) to HTML with the
+    same ``fenced_code`` + ``codehilite`` config as a top-level fence; a
+    ``mermaid`` info string becomes the client-rendered ``<pre class="mermaid">``."""
+    if info.split(" ", 1)[0].lower() == "mermaid":
+        code = "\n".join(block[1:-1])
+        return f'<pre class="mermaid">{html.escape(code)}</pre>'
+    sub = markdown.Markdown(
+        extensions=["fenced_code", "codehilite"],
+        extension_configs=_CODEHILITE_CONFIG,
+        output_format="html5",
+    )
+    return sub.convert("\n".join(block))
 
 
 class BlockquoteFenceExtension(Extension):
@@ -187,6 +239,111 @@ class BlockquoteFenceExtension(Extension):
         md.preprocessors.register(
             BlockquoteFencePreprocessor(md), "blockquote_fence", 26
         )
+
+
+# An indented fence opener/closer: leading spaces captured so the body can be
+# de-indented by the same amount.
+INDENTED_FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ ]+)(?P<fence>`{3,}|~{3,})[ ]*(?P<info>[^`\n]*)$")
+INDENTED_FENCE_CLOSE_RE = re.compile(r"^[ ]*(?P<fence>`{3,}|~{3,})[ ]*$")
+
+
+class ListFencePreprocessor(Preprocessor):
+    """Render fenced code blocks that are *indented* — inside a list item, or
+    indented 1–3 spaces at top level.
+
+    ``fenced_code`` only matches a fence starting at column 0, so a fence nested
+    under a list item (``- item`` then ``      ```sql``) is never recognized: its
+    lines become paragraph text and the whole block collapses into one wrapped
+    inline ``<code>`` run. GitHub parses the item's content recursively and gets
+    a real code block — even when no blank line separates it from the item's
+    text, since a fence may interrupt a paragraph.
+
+    This finds such a fence, de-indents it, renders it like a top-level fence,
+    stashes the HTML, and re-emits the placeholder as its own block at the
+    owning item's content indent on the 4-space grid (``(level + 1) * 4``) —
+    tracking list levels with the same relative-step model as
+    ``ListIndentNormalizePreprocessor``, which re-emits the markers at
+    ``level * 4``. Outside any list only a 1–3 space fence is taken (4+ is an
+    indented code block) and the placeholder goes flush-left.
+
+    Priority 25.5: after ``fenced_code`` (25) so flush-left fences are already
+    stashed, before ``list_indent_normalize`` (24) so a body line like
+    ``- key: value`` is never mistaken for a list marker, and below
+    ``normalize_whitespace`` (30) so the placeholder survives."""
+
+    def run(self, lines):
+        out = []
+        stack = []  # original indent widths of open list levels, outermost first
+        i = 0
+        n = len(lines)
+        while i < n:
+            line = lines[i]
+            marker = LIST_ITEM_RE.match(line)
+            if marker is not None:
+                width = len(marker.group(1).expandtabs(4))
+                while stack and width < stack[-1]:
+                    stack.pop()
+                if not stack or width > stack[-1]:
+                    stack.append(width)
+                out.append(line)
+                i += 1
+                continue
+
+            opener = INDENTED_FENCE_OPEN_RE.match(line)
+            if opener is None:
+                if line.strip() and not line[:1].isspace() and not line.startswith("\x02"):
+                    stack = []
+                out.append(line)
+                i += 1
+                continue
+
+            indent = len(opener.group("indent"))
+            # The owning item is the deepest open level whose marker sits left
+            # of the fence.
+            owner = [w for w in stack if w < indent]
+            if not owner and indent > 3:
+                out.append(line)  # 4+ spaces outside a list: indented code
+                i += 1
+                continue
+
+            fence = opener.group("fence")
+            block = [line[indent:]]
+            j = i + 1
+            closed = False
+            while j < n:
+                body = lines[j]
+                strip = min(indent, len(body) - len(body.lstrip(" ")))
+                block.append(body[strip:])
+                close = INDENTED_FENCE_CLOSE_RE.match(body)
+                j += 1
+                if close and close.group("fence")[0] == fence[0] and len(close.group("fence")) >= len(fence):
+                    closed = True
+                    break
+            if not closed:
+                out.append(line)
+                i += 1
+                continue
+
+            placeholder = self.md.htmlStash.store(
+                _render_fenced_block(block, opener.group("info").strip())
+            )
+            # Keep the list open at the owner's level, dropping deeper ones.
+            stack = stack[:len(owner)]
+            pad = " " * (len(owner) * 4)
+            # Blank lines on both sides make the placeholder its own block, so
+            # it isn't glued into the preceding paragraph or the next one.
+            if out and out[-1].strip():
+                out.append("")
+            out.append(pad + placeholder)
+            if j < n and lines[j].strip():
+                out.append("")
+            i = j
+        return out
+
+
+class ListFenceExtension(Extension):
+    def extendMarkdown(self, md):
+        md.preprocessors.register(ListFencePreprocessor(md), "list_fence", 25.5)
 
 
 # A list-item marker at line start: ordered (`1.` / `1)`) or unordered

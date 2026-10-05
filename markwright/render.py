@@ -18,7 +18,9 @@ from markwright import state
 from markwright.frontmatter import extract_frontmatter, render_frontmatter_panel
 from markwright.links import is_local_reference, resolve_reference
 from markwright.markdown_ext import (
+    CODEHILITE_OPTIONS,
     BlockquoteFenceExtension,
+    ListFenceExtension,
     EmojiExtension,
     GFMHardBreakExtension,
     GFMListBreakExtension,
@@ -136,6 +138,7 @@ def render_markdown_source(rel_path, source):
             "toc",
             MermaidExtension(),
             BlockquoteFenceExtension(),
+            ListFenceExtension(),
             PageBreakExtension(),
             ListIndentNormalizeExtension(),
             MarkdownInHtmlAutoAttrExtension(),
@@ -149,11 +152,7 @@ def render_markdown_source(rel_path, source):
             LocalPathExtension(rel_path),
         ],
         extension_configs={
-            "codehilite": {
-                "guess_lang": False,
-                "linenums": False,
-                "css_class": "codehilite",
-            },
+            "codehilite": CODEHILITE_OPTIONS,
             # Heading ids must match the slugs GitHub generates, or a
             # hand-written index of `[Title](#title)` links breaks — see
             # `github_slugify`.

@@ -856,10 +856,82 @@
     });
   }
 
+  // --- Copy a rendered table (paste into Excel / Sheets / Word) -------------
+  // Each content table gets a wrapper so the button can sit over its corner:
+  // the table itself is display:block + overflow:auto, so an absolutely
+  // positioned child would scroll away with a wide table. Frontmatter tables
+  // are metadata, not data, and are skipped.
+  function addTableCopyButtons(scope) {
+    (scope || document).querySelectorAll(".markdown-body table").forEach(function (table) {
+      if (table.closest(".frontmatter-panel, .table-wrap")) return;
+      const wrap = document.createElement("div");
+      wrap.className = "table-wrap";
+      table.before(wrap);
+      wrap.appendChild(table);
+      const button = makeCopyButton();
+      button.classList.add("copy-table");
+      button.setAttribute("aria-label", t("Copy table to clipboard"));
+      wrap.appendChild(button);
+    });
+  }
+
+  // Tab-separated rows: what a spreadsheet splits into cells on a plain-text
+  // paste. Tabs/newlines inside a cell would break the grid, so they fold to
+  // spaces; colspan pads with empty cells so later columns stay aligned.
+  function tableToTsv(table) {
+    return Array.from(table.rows).map(function (row) {
+      const cells = [];
+      Array.from(row.cells).forEach(function (cell) {
+        cells.push(cell.innerText.replace(/[\t\r\n]+/g, " ").trim());
+        for (let i = 1; i < cell.colSpan; i++) cells.push("");
+      });
+      return cells.join("\t");
+    }).join("\n");
+  }
+
+  async function copyTable(table) {
+    const html = "<table>" + table.innerHTML + "</table>";
+    const text = tableToTsv(table);
+    if (navigator.clipboard && window.ClipboardItem) {
+      // Both flavours: Excel/Sheets/Word take the HTML (a real table, bold
+      // headers, links); a plain-text target gets the TSV.
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      })]);
+      return;
+    }
+    // Insecure context (served on a LAN IP over http): no async clipboard.
+    // Selecting the table and running the legacy copy still yields HTML.
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNode(table);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const ok = document.execCommand("copy");
+    selection.removeAllRanges();
+    if (!ok) throw new Error("copy failed");
+  }
+
   document.addEventListener("click", async function (event) {
     const button = event.target.closest && event.target.closest(".copy-code");
     if (!button) return;
     let text;
+    const wrap = button.classList.contains("copy-table") && button.closest(".table-wrap");
+    if (wrap) {
+      try {
+        await copyTable(wrap.querySelector("table"));
+        button.textContent = t("Copied!");
+        button.classList.add("is-copied");
+      } catch (err) {
+        button.textContent = t("Failed");
+      }
+      setTimeout(function () {
+        button.textContent = t("Copy");
+        button.classList.remove("is-copied");
+      }, 1200);
+      return;
+    }
     const block = button.closest(".mermaid-block");
     if (block) {
       const srcCode = block.querySelector(".mermaid-source code");
@@ -889,6 +961,79 @@
   });
 
   addCopyButtons();
+  addTableCopyButtons();
+
+  // --- Rendered preview of ```markdown blocks ------------------------------
+  // A ```markdown fence (a template, an example) shows as literal source; this
+  // toggle swaps it for the rendered result in place. The block's text goes
+  // through /api/render, i.e. the same pipeline + bleach allowlist as a page
+  // view. Rendered once, then cached on the block.
+  (function setupMarkdownBlockPreview() {
+    if (!selectedPath) return;
+    const codes = document.querySelectorAll(
+      ".markdown-body div.codehilite > pre > code.language-markdown, " +
+      ".markdown-body div.codehilite > pre > code.language-md"
+    );
+    codes.forEach(function (code) {
+      const block = code.closest("div.codehilite");
+      // The toggle lives in its own row above the block, not overlaid on the
+      // code: a pre's top-right corner is taken by Copy and by long lines.
+      const bar = document.createElement("div");
+      bar.className = "md-preview-bar";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "md-preview-toggle";
+      button.textContent = t("Preview");
+      button.setAttribute("aria-pressed", "false");
+      bar.appendChild(button);
+      block.before(bar);
+
+      let preview = null;
+      function show(rendered) {
+        block.hidden = rendered;
+        if (preview) preview.hidden = !rendered;
+        button.textContent = rendered ? t("Show source") : t("Preview");
+        button.setAttribute("aria-pressed", String(rendered));
+      }
+      async function render() {
+        button.disabled = true;
+        try {
+          const res = await fetch("/api/render", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: selectedPath, content: code.textContent }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          preview = document.createElement("div");
+          preview.className = "md-block-preview";
+          preview.innerHTML = data.html;
+          // Ids would duplicate the document's own headings (and pull these
+          // into anchor/TOC lookups); checkboxes here aren't the doc's tasks.
+          preview.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+          preview.querySelectorAll("input").forEach((el) => { el.disabled = true; });
+          block.after(preview);
+          const diagrams = preview.querySelectorAll("pre.mermaid");
+          if (diagrams.length && window.__mermaid) {
+            diagrams.forEach((el) => { el.dataset.source = el.textContent; });
+            try { window.__mermaid.run({ nodes: diagrams }); } catch (_) {}
+          }
+          return true;
+        } catch (err) {
+          button.textContent = t("Failed");
+          setTimeout(() => { button.textContent = t("Preview"); }, 1200);
+          return false;
+        } finally {
+          button.disabled = false;
+        }
+      }
+      button.addEventListener("click", async function () {
+        const rendered = button.getAttribute("aria-pressed") === "true";
+        if (!rendered && !preview && !(await render())) return;
+        show(!rendered);
+      });
+    });
+  })();
 
   // --- Reading aids (rendered view) ---------------------------------------
   (function setupReadingAids() {

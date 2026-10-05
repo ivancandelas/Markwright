@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Markwright launcher: run the app from anywhere, no venv activation needed.
+# Symlink into a directory on PATH, e.g.:
+#   ln -s "$PWD/scripts/markwright" ~/.local/bin/markwright
+#
+#   markwright .                  serve the current folder
+#   markwright ~/docs --open      serve a folder and open a browser at it
+#   markwright                    no directory -> resume the last source
+#
+# Defaults to port 8090; pass --port to override.
+set -euo pipefail
+
+REPO="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd)"
+PY="$REPO/.venv/bin/python"
+
+if [[ ! -x "$PY" ]]; then
+    echo "markwright: no interpreter at $PY" >&2
+    echo "  create it with: uv venv && uv pip install -r $REPO/requirements.txt" >&2
+    exit 1
+fi
+
+DEFAULT_PORT=8090
+
+args=()
+open_browser=0
+host=127.0.0.1
+port="$DEFAULT_PORT"
+seen_port=0
+
+# Pass everything through to app.py untouched; only peel off our own --open,
+# and note host/port so --open knows which URL to hit.
+while (( $# )); do
+    case "$1" in
+        --open)     open_browser=1; shift ;;
+        --port)     seen_port=1; port="${2-}"; args+=("$1" "${2-}"); shift 2 ;;
+        --port=*)   seen_port=1; port="${1#*=}"; args+=("$1"); shift ;;
+        --host)     host="${2-}"; args+=("$1" "${2-}"); shift 2 ;;
+        --host=*)   host="${1#*=}"; args+=("$1"); shift ;;
+        *)          args+=("$1"); shift ;;
+    esac
+done
+
+(( seen_port )) || args+=(--port "$DEFAULT_PORT")
+
+if (( open_browser )); then
+    # 0.0.0.0 isn't a browsable address; point the browser at loopback instead.
+    [[ "$host" == "0.0.0.0" || "$host" == "::" ]] && host=127.0.0.1
+    ( sleep 1.5; xdg-open "http://${host}:${port}/" >/dev/null 2>&1 || true ) &
+fi
+
+exec "$PY" "$REPO/app.py" "${args[@]}"

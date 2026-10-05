@@ -3147,6 +3147,72 @@ body.editor-fs-lock {
   border-color: var(--accent);
 }
 
+/* Content tables are wrapped so Copy can sit over the table's corner without
+   scrolling away with a wide (display:block, overflow:auto) table. The wrap
+   takes over the table's bottom margin. */
+.markdown-body .table-wrap {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 0 1em;
+}
+
+.markdown-body .table-wrap > table {
+  margin: 0;
+}
+
+.markdown-body .table-wrap:hover .copy-code {
+  opacity: 1;
+}
+
+.copy-table {
+  top: 6px;
+  right: 6px;
+}
+
+/* Rendered-preview toggle on ```markdown blocks: its own right-aligned row
+   above the block, so it never covers code or competes with Copy. */
+.md-preview-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 6px;
+}
+
+.md-preview-toggle {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.md-preview-toggle:hover,
+.md-preview-toggle[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--panel-alt);
+}
+
+.md-preview-toggle:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* A soft accent tint (theme-relative, so it reads on light and dark alike)
+   sets the preview apart from the document's own rendered markdown. */
+.md-block-preview {
+  margin: 0 0 1em;
+  padding: 16px 20px 4px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+
 .markdown-body pre code {
   background: transparent;
   padding: 0;
@@ -4075,6 +4141,7 @@ body.editor-fs-lock {
   .diagram-overlay,
   .mermaid-toolbar,
   .copy-code,
+  .md-preview-bar,
   .sidebar-collapse,
   .sidebar-show,
   .toc-collapse,
@@ -4157,7 +4224,12 @@ body.editor-fs-lock {
   /* On screen wide tables scroll horizontally (display:block + overflow);
      print has no scroll, so constrain to the page width and let cell
      content wrap instead of overflowing/clipping. Smaller type keeps the
-     extra wrapped rows compact. */
+     extra wrapped rows compact. The copy wrap must stretch too, or its
+     max-content width caps the table's 100%. */
+  .markdown-body .table-wrap {
+    width: auto;
+  }
+
   .markdown-body table {
     display: table;
     width: 100%;
