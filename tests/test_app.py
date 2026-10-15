@@ -668,6 +668,35 @@ class TestRenderMarkdown:
         html_out, _ = appmod.render_markdown(p)
         assert html_out.count("<ul>") == 3  # three nesting levels
 
+    def test_commonmark_continuation_paragraph_stays_in_item(self, content_dir):
+        # A second paragraph indented to the item's content column (3 under
+        # `1. `) is CommonMark; short of Python-Markdown's 4 it used to close
+        # the list and swallow `2.` into that paragraph as text.
+        p = content_dir / "doc.md"
+        p.write_text(
+            "1. **One.** Reasons:\n"
+            "   - a;\n"
+            "   - b.\n"
+            "\n"
+            "   Second paragraph.\n"
+            "\n"
+            "   *Note:* third paragraph.\n"
+            "2. **Two.** text\n"
+            "3. **Three.** text\n"
+        )
+        html_out, _ = appmod.render_markdown(p)
+        assert html_out.count("<ol>") == 1
+        assert html_out.count("<li>") == 5  # 3 items + 2 bullets
+        assert "Second paragraph." in html_out.split("<strong>Two.")[0]
+        assert "2. <strong>" not in html_out
+
+    def test_indented_code_inside_item_untouched(self, content_dir):
+        # 4+ past the content column is indented code within the item.
+        p = content_dir / "doc.md"
+        p.write_text("- item\n\n        code line\n")
+        html_out, _ = appmod.render_markdown(p)
+        assert "<pre" in html_out and "code line" in html_out
+
     def test_ordered_list_interrupts_paragraph(self, content_dir):
         # Python-Markdown never lets a list interrupt a paragraph, so a `1.`
         # written flush against the preceding prose gets swallowed and the list

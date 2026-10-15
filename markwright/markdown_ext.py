@@ -370,17 +370,26 @@ class ListIndentNormalizePreprocessor(Preprocessor):
     and 4-space styles uniformly and is a no-op on lists already on the 4-space
     grid (so it can't regress them).
 
-    Only list-*marker* lines are rewritten; everything else passes through
-    untouched. Runs after ``fenced_code`` (priority 25) so fenced blocks are
-    already stashed to single placeholder lines and never seen here. Indented
-    (4-space) code is left alone because it carries no marker. A flush-left,
-    non-list, non-blank line ends any open list and resets the level stack."""
+    List-*marker* lines are rewritten, and so are an open item's indented
+    *continuation* lines (a second paragraph, a lazy wrap): CommonMark places
+    them at the item's content column (3 under ``1. ``), Python-Markdown needs
+    the next 4-space stop, and short of it the paragraph falls out of the list
+    and closes it -- so a following ``2.`` gets swallowed into that paragraph.
+    A continuation indented 4+ past the content column is indented code inside
+    the item and is left alone, as is everything outside a list. Runs after
+    ``fenced_code`` (priority 25) so fenced blocks are already stashed to
+    single placeholder lines and never seen here. A flush-left, non-list,
+    non-blank line ends any open list and resets the level stack."""
 
     def run(self, lines):
         out = []
-        # Each stack entry is the *original* indent width of an open list level,
-        # smallest (outermost) first. len(stack)-1 is the current depth.
+        # Each stack entry is ``(marker indent, content column)`` of an open
+        # list level, in *original* widths, outermost first. len(stack)-1 is
+        # the current depth.
         stack = []
+        # True while the open item's current block is a continuation paragraph
+        # that followed a blank line (the item is already loose).
+        in_para = False
         for line in lines:
             match = LIST_ITEM_RE.match(line)
             if match is None:
@@ -390,20 +399,48 @@ class ListIndentNormalizePreprocessor(Preprocessor):
                 # indented continuation/code keep the list open.
                 if stripped and not line[:1].isspace() and not line.startswith("\x02"):
                     stack = []
+                    in_para = False
+                elif stripped and stack:
+                    if not out or not out[-1].strip():
+                        in_para = True
+                    line = self._continuation(line, stack)
                 out.append(line)
                 continue
 
             indent = match.group(1).expandtabs(4)
             width = len(indent)
-            while stack and width < stack[-1]:
+            content_col = width + len(match.group(2)) + len(match.group(3).expandtabs(4))
+            # A sibling/outer marker right after a loose item's continuation
+            # paragraph ends that item in CommonMark, but Python-Markdown reads
+            # it as a lazy line of the paragraph -- separate it.
+            if in_para and stack and width <= stack[-1][0] and out and out[-1].strip():
+                out.append("")
+            in_para = False
+            while stack and width < stack[-1][0]:
                 stack.pop()
-            if not stack or width > stack[-1]:
-                stack.append(width)
+            if not stack or width > stack[-1][0]:
+                stack.append((width, content_col))
+            else:
+                stack[-1] = (width, content_col)
             level = len(stack) - 1
             out.append(
                 " " * (level * 4) + match.group(2) + match.group(3) + match.group(4)
             )
         return out
+
+    @staticmethod
+    def _continuation(line, stack):
+        """Re-indent a continuation line onto the content stop of the deepest
+        open item whose content column it reaches."""
+        expanded = line.expandtabs(4)
+        width = len(expanded) - len(expanded.lstrip())
+        for level in range(len(stack) - 1, -1, -1):
+            content_col = stack[level][1]
+            if width >= content_col:
+                if width - content_col >= 4:
+                    return line  # indented code inside the item
+                return " " * ((level + 1) * 4) + expanded.lstrip()
+        return line
 
 
 class ListIndentNormalizeExtension(Extension):
