@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset_url('css/style.css') }}">
   </head>
   <body>
-    <div class="app-shell" id="app-shell">
+    <div class="app-shell" id="app-shell" data-selected="{{ selected or '' }}">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
           <a class="brand" href="{{ url_for('index') }}">Markwright</a>
@@ -210,6 +210,9 @@
                 <p class="eyebrow">{{ _('Current file') }}</p>
                 <h2>{{ selected if selected else _('No markdown file selected') }}</h2>
                 <p class="content-root">{{ _('Root: %(dir)s', dir=content_dir) }}</p>
+                {% if doc_mtime %}
+                  <p class="doc-meta doc-modified" id="doc-modified" data-mtime="{{ doc_mtime }}" hidden></p>
+                {% endif %}
               </div>
               {% if editable %}
                 <div class="file-menu-wrap">

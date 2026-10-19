@@ -215,6 +215,7 @@ def index():
     content = ""
     toc = ""
     doc_title = ""
+    doc_mtime = None
 
     if selected:
         path = safe_path(selected)
@@ -226,6 +227,7 @@ def index():
         # page <title>. This is what Chrome embeds as the PDF's document title, so
         # a clean professional value beats the on-disk filename + app name.
         doc_title = _extract_doc_title(path, selected)
+        doc_mtime = path.stat().st_mtime
         remember_last_file(selected)
 
     return render_template(
@@ -235,6 +237,7 @@ def index():
         tree_meta=collect_tree_metadata(files),
         selected=selected,
         doc_title=doc_title,
+        doc_mtime=doc_mtime,
         content=content,
         toc=toc,
         # Only the PDF export navigates here with pdf_toc=1, to prepend a

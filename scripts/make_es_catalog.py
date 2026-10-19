@@ -79,6 +79,8 @@ ES = {
     "View source": "Ver código fuente",
     # --- reading aids ---------------------------------------------------
     "%(words)s words · ~%(min)s min read": "%(words)s palabras · ~%(min)s min de lectura",
+    "Modified %(date)s (%(ago)s)": "Modificado: %(date)s (%(ago)s)",
+    "Modified %(date)s": "Modificado: %(date)s",
     "Copy link to this section": "Copiar enlace a esta sección",
     "Back to top": "Volver arriba",
     "Focus reading (F)": "Lectura enfocada (F)",

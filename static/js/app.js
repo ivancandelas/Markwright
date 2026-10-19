@@ -26,7 +26,10 @@
   const sidebarShow = document.getElementById("sidebar-show");
   const topbarCollapse = document.getElementById("topbar-collapse");
   const topbarShow = document.getElementById("topbar-show");
-  const selectedPath = new URLSearchParams(window.location.search).get("file") || "";
+  // The doc the server actually rendered — not just `?file=`, which is absent
+  // when `/` resumes the last-open file (that left every per-doc feature off).
+  const selectedPath = (appShell && appShell.dataset.selected) ||
+    new URLSearchParams(window.location.search).get("file") || "";
   const contentScrollKey = `markwright-content-scroll:${selectedPath}`;
   const sidebarScrollKey = "markwright-sidebar-scroll";
   const sidebarHiddenKey = "markwright-sidebar-hidden";
@@ -1035,6 +1038,47 @@
     });
   })();
 
+  // --- Last-modified line in the document header ---------------------------
+  // The server stamps the file's mtime (epoch seconds) on #doc-modified; it is
+  // formatted here so it follows the UI locale and the viewer's time zone, with
+  // a relative "3 hours ago" that is refreshed once a minute.
+  const docModified = document.getElementById("doc-modified");
+  function renderModified() {
+    if (!docModified) return;
+    const secs = Number(docModified.dataset.mtime);
+    if (!secs) return;
+    const when = new Date(secs * 1000);
+    const lang = root.lang || undefined;
+    let absolute;
+    try {
+      absolute = when.toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" });
+    } catch (_) {
+      absolute = when.toLocaleString();
+    }
+    let relative = "";
+    if (typeof Intl !== "undefined" && Intl.RelativeTimeFormat) {
+      const diff = (when.getTime() - Date.now()) / 1000;  // negative = past
+      const units = [["year", 31536000], ["month", 2592000], ["week", 604800],
+        ["day", 86400], ["hour", 3600], ["minute", 60]];
+      const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
+      const unit = units.find(([, size]) => Math.abs(diff) >= size);
+      relative = unit ? rtf.format(Math.round(diff / unit[1]), unit[0]) : rtf.format(0, "second");
+    }
+    docModified.textContent = relative
+      ? t("Modified %(date)s (%(ago)s)", { date: absolute, ago: relative })
+      : t("Modified %(date)s", { date: absolute });
+    docModified.title = when.toISOString();
+    docModified.hidden = false;
+  }
+  // Our own writes (task-checkbox auto-save) bump the mtime without a reload.
+  function setModifiedTime(secs) {
+    if (!docModified || typeof secs !== "number") return;
+    docModified.dataset.mtime = String(secs);
+    renderModified();
+  }
+  renderModified();
+  if (docModified) setInterval(renderModified, 60000);
+
   // --- Reading aids (rendered view) ---------------------------------------
   (function setupReadingAids() {
     const mdBody = document.querySelector(".markdown-body");
@@ -1052,7 +1096,8 @@
       meta.textContent = t("%(words)s words · ~%(min)s min read", {
         words: words.toLocaleString(), min: mins,
       });
-      heading.appendChild(meta);
+      // Word count first, then the last-modified line.
+      heading.insertBefore(meta, docModified && docModified.parentNode === heading ? docModified : null);
     }
 
     // Hover anchor on each heading → copy a link to that section.
@@ -4209,6 +4254,7 @@
           } else if (typeof data.mtime === "number" && window.__mwSetMtimeBaseline) {
             // Absorb the mtime bump so the live-reload poller doesn't reload.
             window.__mwSetMtimeBaseline(data.mtime);
+            setModifiedTime(data.mtime);
           }
         } catch (_) {
           box.checked = !checked;

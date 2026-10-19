@@ -46,6 +46,18 @@ class TestIndex:
         # frontmatter title flows into the page <title>
         assert b"Hello Doc" in r.data
 
+    def test_header_carries_last_modified_mtime(self, client, content_dir):
+        r = client.get("/?file=hello.md")
+        mtime = (content_dir / "hello.md").stat().st_mtime
+        assert f'id="doc-modified" data-mtime="{mtime}"'.encode() in r.data
+
+    def test_resumed_doc_is_exposed_to_the_client(self, client):
+        # `/` without ?file= still renders a doc; the client keys every per-doc
+        # feature (live reload, task toggles, reading aids) off data-selected.
+        r = client.get("/")
+        assert b'data-selected="' in r.data
+        assert b'data-selected=""' not in r.data
+
     def test_rst_renders(self, client):
         r = client.get("/?file=doc.rst")
         assert r.status_code == 200
