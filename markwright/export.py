@@ -753,22 +753,24 @@ def _render_pdf(url, header_template, footer_template, show_hf, page_format, lan
                 margin["top"] = f"{max(_parse_mm(margin['top']), top_need):g}mm"
                 margin["bottom"] = f"{max(_parse_mm(margin['bottom']), bot_need):g}mm"
 
-            # Cover / blank page (and anything else prepended) goes in *after*
-            # margins are finalized: a full-page cover needs to know the printable
-            # height (page − top/bottom margins, incl. any band growth) to center
-            # its content and pin the footer to the bottom edge. Expose it as a
-            # CSS var the cover sizes its min-height from, then inject the markup
-            # at the very top of .markdown-body (before the contents page, if any).
+            # The printable height (page − top/bottom margins, incl. any band
+            # growth) is only known once margins are finalized. Expose it as a CSS
+            # var: a full-page cover sizes its min-height from it, and print caps
+            # mermaid diagrams to it so a tall one scales down instead of being
+            # pushed a page and clipped.
+            page_h_px = _PAGE_PX.get(page_format, _PAGE_PX["A4"])[1]
+            if landscape:
+                page_h_px = _PAGE_PX.get(page_format, _PAGE_PX["A4"])[0]
+            content_h_px = page_h_px - (
+                _parse_mm(margin["top"]) + _parse_mm(margin["bottom"])
+            ) * 96.0 / 25.4
+            page.add_style_tag(
+                content=f":root{{--pdf-page-content-height:{content_h_px:g}px;}}"
+            )
+
+            # Cover / blank page (and anything else prepended) goes at the very
+            # top of .markdown-body (before the contents page, if any).
             if prepend_html:
-                page_h_px = _PAGE_PX.get(page_format, _PAGE_PX["A4"])[1]
-                if landscape:
-                    page_h_px = _PAGE_PX.get(page_format, _PAGE_PX["A4"])[0]
-                content_h_px = page_h_px - (
-                    _parse_mm(margin["top"]) + _parse_mm(margin["bottom"])
-                ) * 96.0 / 25.4
-                page.add_style_tag(
-                    content=f":root{{--pdf-page-content-height:{content_h_px:g}px;}}"
-                )
                 page.evaluate(
                     """(html) => {
                         const body = document.querySelector('.markdown-body');

@@ -4286,6 +4286,21 @@ body.editor-fs-lock {
     height: auto !important;
   }
 
+  /* A diagram is never split across pages (break-inside: avoid above), so one
+     taller than the printable area got pushed a page — leaving a blank one —
+     and was then clipped anyway. Cap it to the page height (less room for the
+     heading kept with it) and let the viewBox scale it down. The generic `pre`
+     print box (gray fill + border) doesn't belong around a diagram either. */
+  .markdown-body pre.mermaid {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+  }
+
+  .markdown-body pre.mermaid svg {
+    max-height: calc(var(--pdf-page-content-height, 240mm) - 10em) !important;
+  }
+
   /* Match the base rule's specificity so the toggle summary (label + ▾ marker,
      meaningless in a static PDF) is actually hidden in print. */
   .markdown-body details.frontmatter-panel > summary {
