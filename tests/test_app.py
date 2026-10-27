@@ -587,6 +587,26 @@ class TestExtractDocTitle:
 # --------------------------------------------------------------------------- #
 # github_slugify — heading ids must match GitHub's, or hand-written indexes break
 # --------------------------------------------------------------------------- #
+class TestMermaidLayoutApplies:
+    def test_elk_applies_to_graph_types(self):
+        assert appmod._mermaid_layout_applies("elk", "flowchart TB\n A-->B")
+        assert appmod._mermaid_layout_applies("elk.force", "stateDiagram-v2\n [*]-->A")
+
+    def test_elk_skips_mindmap_and_tidy_tree_skips_flowchart(self):
+        mindmap = "mindmap\n  root((r))\n    a"
+        assert not appmod._mermaid_layout_applies("elk", mindmap)
+        assert appmod._mermaid_layout_applies("tidy-tree", mindmap)
+        assert not appmod._mermaid_layout_applies("tidy-tree", "graph LR\n A-->B")
+
+    def test_kind_read_past_frontmatter_and_comments(self):
+        src = "---\nconfig:\n  layout: elk\n---\n%% note\n\nflowchart LR\n A-->B"
+        assert appmod._mermaid_layout_applies("elk", src)
+
+    def test_dagre_and_unknown_never_apply(self):
+        assert not appmod._mermaid_layout_applies("dagre", "flowchart TB\n A-->B")
+        assert not appmod._mermaid_layout_applies("bogus", "flowchart TB\n A-->B")
+
+
 class TestGithubSlugify:
     def test_keeps_accents(self):
         # Python-Markdown's default slugify would ASCII-fold this away.

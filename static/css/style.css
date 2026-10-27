@@ -489,7 +489,8 @@ a {
 .theme-select,
 .font-select,
 .width-select,
-.mermaid-theme-select {
+.mermaid-theme-select,
+.mermaid-layout-select {
   height: 34px;
   flex: 1 1 90px;
   min-width: 0;
@@ -508,7 +509,8 @@ a {
 .theme-select:focus,
 .font-select:focus,
 .width-select:focus,
-.mermaid-theme-select:focus {
+.mermaid-theme-select:focus,
+.mermaid-layout-select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
@@ -3261,7 +3263,8 @@ body.editor-fs-lock {
   gap: 6px;
 }
 
-.mermaid-toggle {
+.mermaid-toggle,
+.mermaid-action {
   padding: 4px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -3283,14 +3286,34 @@ body.editor-fs-lock {
 }
 
 .markdown-body .mermaid-block:hover .mermaid-toggle,
+.markdown-body .mermaid-block:hover .mermaid-action,
 .mermaid-toggle:focus-visible,
+.mermaid-action:focus-visible,
 .markdown-body .mermaid-block.is-source .mermaid-toggle {
   opacity: 1;
 }
 
-.mermaid-toggle:hover {
+.mermaid-toggle:hover,
+.mermaid-action:hover {
   color: var(--text);
   background: var(--panel-alt);
+}
+
+/* Copy image / PNG / SVG act on the drawn diagram, so they go with it. */
+.markdown-body .mermaid-block.is-source .mermaid-action {
+  display: none;
+}
+
+.mermaid-action.is-copied {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.mermaid-action.is-error {
+  opacity: 1;
+  color: var(--danger, #cf222e);
+  border-color: currentColor;
 }
 
 .markdown-body .mermaid-block:not(.is-source) .mermaid-copy {

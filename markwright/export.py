@@ -681,7 +681,8 @@ def _render_pdf(url, header_template, footer_template, show_hf, page_format, lan
             try:
                 page.wait_for_function(
                     "() => {const m=[...document.querySelectorAll('pre.mermaid')];"
-                    "return m.length===0 || m.every(e=>e.getAttribute('data-processed')==='true');}",
+                    "return !window.__mwMermaidBusy && (m.length===0 ||"
+                    " m.every(e=>e.getAttribute('data-processed')==='true'));}",
                     timeout=15000,
                 )
             except Exception:
@@ -842,6 +843,33 @@ DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.docu
 
 # CDN module the viewer itself loads mermaid from — reused for headless render.
 _MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
+# Extra layout engines registered next to mermaid — same pins as index.html.
+_MERMAID_LAYOUT_CDNS = (
+    "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.3/dist/mermaid-layout-elk.esm.min.mjs",
+    "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-tidy-tree@0.2.2/dist/mermaid-layout-tidy-tree.esm.min.mjs",
+)
+# Global diagram layouts the viewer's selector offers; "dagre" is mermaid's own.
+MERMAID_LAYOUTS = ("dagre", "elk", "elk.stress", "elk.force", "elk.mrtree", "elk.sporeOverlap", "tidy-tree")
+_MERMAID_FRONTMATTER_RE = re.compile(r"\A\s*---\r?\n.*?\r?\n---[ \t]*\r?\n", re.S)
+_ELK_KINDS = frozenset({
+    "flowchart", "flowchart-elk", "graph", "stateDiagram", "stateDiagram-v2",
+    "classDiagram", "classDiagram-v2", "erDiagram", "requirementDiagram",
+})
+
+
+def _mermaid_layout_applies(layout, source):
+    """Whether a global `layout` can lay out this diagram type — ELK on a
+    mindmap or tidy-tree on a flowchart throws. Mirror of
+    `mermaidLayoutApplies` in static/js/app.js."""
+    if layout not in MERMAID_LAYOUTS or layout == "dagre":
+        return False
+    kind = ""
+    for line in _MERMAID_FRONTMATTER_RE.sub("", source, count=1).splitlines():
+        line = line.strip()
+        if line and not line.startswith("%%"):
+            kind = re.split(r"[\s;]", line, maxsplit=1)[0]
+            break
+    return kind == "mindmap" if layout == "tidy-tree" else kind in _ELK_KINDS
 
 
 def _mix_hex(a, b, t):
@@ -902,9 +930,11 @@ def _png_set_dpi(data, dpi):
     return bytes(out) if inserted else data
 
 
-def _render_mermaid_pngs(sources):
+def _render_mermaid_pngs(sources, layout="dagre"):
     """Rasterize each mermaid diagram source to a PNG via headless Chrome
-    (mermaid@11 from the same CDN the viewer uses).
+    (mermaid@11 from the same CDN the viewer uses). `layout` is the viewer's
+    global layout engine, applied to the diagram types it supports; one that
+    fails on it is retried on dagre, as in the viewer.
 
     Returns a list aligned with `sources`; each entry is ``(png_bytes,
     width_px)`` or ``None`` when that diagram couldn't be rendered. Returns
@@ -926,9 +956,13 @@ def _render_mermaid_pngs(sources):
                 page = browser.new_page(device_scale_factor=_MERMAID_DEVICE_SCALE)
                 page.set_content('<div id="c" style="background:#fff;"></div>')
                 flags = page.evaluate(
-                    """async ([cdn, sources, themeVars]) => {
+                    """async ([cdn, layoutCdns, sources, layouts, themeVars]) => {
                         const mermaid = (await import(cdn)).default;
-                        mermaid.initialize({ startOnLoad: false, theme: 'default', themeVariables: themeVars });
+                        const loaders = await Promise.all(layoutCdns.map(
+                            (u) => import(u).then((m) => m.default, () => [])));
+                        mermaid.registerLayoutLoaders(loaders.flat());
+                        const init = (layout) => mermaid.initialize(
+                            { startOnLoad: false, theme: 'default', themeVariables: themeVars, layout });
                         const c = document.getElementById('c');
                         const out = [];
                         for (let i = 0; i < sources.length; i++) {
@@ -936,18 +970,27 @@ def _render_mermaid_pngs(sources):
                             d.id = 'd' + i;
                             d.style.cssText = 'background:#fff;display:inline-block;padding:4px;';
                             c.appendChild(d);
-                            try {
-                                const { svg } = await mermaid.render('m' + i, sources[i]);
+                            let svg = null;
+                            for (const layout of [...new Set([layouts[i], 'dagre'])]) {
+                                init(layout);
+                                try {
+                                    svg = (await mermaid.render('m' + i + layout.replace(/[^a-z]/gi, ''), sources[i])).svg;
+                                    break;
+                                } catch (e) { /* next layout, or give up */ }
+                            }
+                            if (svg) {
                                 d.innerHTML = svg;
                                 out.push(true);
-                            } catch (e) {
+                            } else {
                                 d.remove();
                                 out.push(false);
                             }
                         }
                         return out;
                     }""",
-                    [_MERMAID_CDN, sources, _MERMAID_THEME_VARS],
+                    [_MERMAID_CDN, list(_MERMAID_LAYOUT_CDNS), sources,
+                     [layout if _mermaid_layout_applies(layout, src) else "dagre" for src in sources],
+                     _MERMAID_THEME_VARS],
                 )
                 for i, good in enumerate(flags):
                     if not good:
@@ -967,16 +1010,17 @@ def _render_mermaid_pngs(sources):
     return results
 
 
-def _inline_mermaid_images(body):
+def _inline_mermaid_images(body, layout="dagre"):
     """Replace ```mermaid fenced blocks in markdown `body` with PNG image refs,
-    pre-rendering each diagram (see `_render_mermaid_pngs`). Returns
+    pre-rendering each diagram with the global `layout` (see
+    `_render_mermaid_pngs`). Returns
     ``(new_body, images)`` where `images` maps a generated filename → PNG bytes
     for the caller to drop on pandoc's resource-path. Diagrams that fail to
     render keep their original fenced block (graceful degradation)."""
     blocks = list(MERMAID_BLOCK_RE.finditer(body))
     if not blocks:
         return body, {}
-    rendered = _render_mermaid_pngs([m.group("code") for m in blocks])
+    rendered = _render_mermaid_pngs([m.group("code") for m in blocks], layout)
     images = {}
     idx = [0]
 

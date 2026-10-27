@@ -617,6 +617,7 @@ from markwright.export import (
     DEFAULT_FONT_SCALE,
     DEFAULT_MARGINS,
     DOCX_MIME,
+    MERMAID_LAYOUTS,
     PDF_FONTS,
     _COVER_IMG_EXTS,
     _COVER_IMG_MAX_IN,
@@ -637,6 +638,7 @@ from markwright.export import (
     _inline_mermaid_images,
     _is_retryable_export_error,
     _margin_mm,
+    _mermaid_layout_applies,
     _parse_fallback_values,
     _parse_mm,
     _png_set_dpi,
@@ -747,6 +749,11 @@ def export_pdf():
     index_kwargs = {"file": bare}
     if include_toc:
         index_kwargs["pdf_toc"] = "1"
+    # The viewer's diagram layout lives in the browser's localStorage, which the
+    # headless Chrome doesn't share; the page reads it back from the URL.
+    mermaid_layout = request.args.get("mermaid_layout", "")
+    if mermaid_layout in MERMAID_LAYOUTS and mermaid_layout != "dagre":
+        index_kwargs["mermaid_layout"] = mermaid_layout
     doc_url = request.url_root.rstrip("/") + url_for("index", **index_kwargs)
     # The headless Chrome that fetches doc_url is a separate HTTP client with an
     # empty cookie jar, so it would otherwise be served the *process-default*
@@ -873,7 +880,7 @@ def export_docx():
                     author = _fm_scalar(data["author"]).strip()
         # Pre-render mermaid diagrams to PNGs so they appear as figures instead
         # of raw code (the viewer renders them client-side; pandoc can't).
-        body, mermaid_images = _inline_mermaid_images(body)
+        body, mermaid_images = _inline_mermaid_images(body, request.args.get("mermaid_layout", "dagre"))
         input_format = "gfm"
 
     # Word TOC field: query param wins (popover checkbox), else the preset flag.

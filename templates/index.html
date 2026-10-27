@@ -92,6 +92,19 @@
                 </optgroup>
               </select>
             </label>
+            <label class="settings-field">{{ _('Diagram layout') }}
+              <select class="mermaid-layout-select" id="mermaid-layout-select" aria-label="{{ _('Diagram layout') }}">
+                <option value="dagre">{{ _('Dagre (default)') }}</option>
+                <optgroup label="ELK">
+                  <option value="elk">{{ _('ELK layered (orthogonal)') }}</option>
+                  <option value="elk.mrtree">ELK mrtree</option>
+                  <option value="elk.stress">ELK stress</option>
+                  <option value="elk.force">ELK force</option>
+                  <option value="elk.sporeOverlap">ELK sporeOverlap</option>
+                </optgroup>
+                <option value="tidy-tree">{{ _('Tidy tree (mindmaps)') }}</option>
+              </select>
+            </label>
             <label class="settings-field">{{ _('Content width') }}
               <select class="width-select" id="width-select" aria-label="{{ _('Content width') }}">
                 <option value="narrow">{{ _('Narrow') }}</option>
@@ -622,15 +635,34 @@
     </script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      // Before the first await: mermaid auto-runs on window `load` unless told
+      // not to, and `load` can fire while the layout loaders below are fetched —
+      // it would render every block on dagre and leave data-source empty.
+      mermaid.initialize({ startOnLoad: false });
+      // Extra layout engines (ELK + tidy-tree). Only the tiny loader modules load
+      // here; the engines themselves are fetched on first use. Optional: a CDN
+      // that fails just leaves mermaid on dagre. Keep in sync with
+      // _MERMAID_LAYOUT_CDNS in markwright/export.py.
+      const layoutModules = await Promise.all([
+        "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.3/dist/mermaid-layout-elk.esm.min.mjs",
+        "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-tidy-tree@0.2.2/dist/mermaid-layout-tidy-tree.esm.min.mjs",
+      ].map((url) => import(url).then((m) => m.default, () => [])));
+      mermaid.registerLayoutLoaders(layoutModules.flat());
       window.__mermaid = mermaid;
-      // app.js (a classic script) executes before this deferred module, so its
-      // shared theme-config builder is available here for the first render.
-      const cfg = (window.__mermaidThemeConfig && window.__mermaidThemeConfig()) || { theme: "default" };
-      mermaid.initialize(Object.assign({ startOnLoad: false }, cfg));
       document.querySelectorAll("pre.mermaid").forEach((el) => {
         el.dataset.source = el.textContent;
       });
-      Promise.resolve(mermaid.run({ querySelector: "pre.mermaid" })).finally(() => {
+      // app.js (a classic script) executes before this deferred module, so its
+      // shared theme + layout runner is available here for the first render.
+      const nodes = document.querySelectorAll("pre.mermaid");
+      let done;
+      if (window.__mwRunMermaid) {
+        done = window.__mwRunMermaid(nodes);
+      } else {
+        mermaid.initialize({ startOnLoad: false, theme: "default" });
+        done = mermaid.run({ nodes });
+      }
+      Promise.resolve(done).finally(() => {
         if (window.__onMermaidRendered) window.__onMermaidRendered();
       });
     </script>

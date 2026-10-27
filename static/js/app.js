@@ -157,6 +157,80 @@
     return mermaidConfigFor(mermaidThemePref());
   };
 
+  // Mermaid layout engine. "dagre" is mermaid's built-in; the rest come from
+  // @mermaid-js/layout-elk and @mermaid-js/layout-tidy-tree, registered by the
+  // module script in index.html. A per-diagram `config: layout:` frontmatter
+  // always wins over this global choice (mermaid merges it over the site config).
+  const MERMAID_LAYOUTS = new Set(["dagre", "elk", "elk.stress", "elk.force", "elk.mrtree", "elk.sporeOverlap", "tidy-tree"]);
+  const mermaidLayoutKey = "markwright-mermaid-layout";
+
+  // ?mermaid_layout= wins: the PDF export's headless Chrome has an empty
+  // localStorage, so the exporter's choice reaches it through the URL.
+  function mermaidLayoutPref() {
+    const fromUrl = new URLSearchParams(window.location.search).get("mermaid_layout");
+    const stored = fromUrl || localStorage.getItem(mermaidLayoutKey) || "dagre";
+    return MERMAID_LAYOUTS.has(stored) ? stored : "dagre";
+  }
+
+  // Which diagram types each engine can lay out. A global choice is only applied
+  // to those — ELK on a mindmap, or tidy-tree on a flowchart, throws. Mirror of
+  // `_mermaid_layout_applies` in markwright/export.py (DOCX raster).
+  const ELK_KINDS = /^(flowchart|flowchart-elk|graph|stateDiagram|stateDiagram-v2|classDiagram|classDiagram-v2|erDiagram|requirementDiagram)$/;
+  function mermaidKind(source) {
+    const body = source.replace(/^\s*---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/, "");
+    for (const line of body.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("%%")) return trimmed.split(/[\s;]/)[0];
+    }
+    return "";
+  }
+  function mermaidLayoutApplies(layout, source) {
+    if (layout === "dagre") return false;
+    const kind = mermaidKind(source);
+    return layout === "tidy-tree" ? kind === "mindmap" : ELK_KINDS.test(kind);
+  }
+
+  // Render `nodes` (pre.mermaid) with the current theme + layout. Shared by the
+  // first render (index.html), theme/layout switches and the previews. While it
+  // runs, __mwMermaidBusy holds the PDF export's readiness wait: a retried
+  // diagram is briefly data-processed with an error graphic in between.
+  window.__mwMermaidBusy = 0;
+  async function runMermaidNodes(nodes) {
+    const mermaid = window.__mermaid;
+    nodes = Array.from(nodes);
+    if (!mermaid || !nodes.length) return;
+    window.__mwMermaidBusy++;
+    try {
+      const base = Object.assign({ startOnLoad: false }, mermaidConfigFor(mermaidThemePref()));
+      const layout = mermaidLayoutPref();
+      const sourceOf = (el) => (el.dataset.source !== undefined ? el.dataset.source : el.textContent);
+      const laid = nodes.filter((el) => mermaidLayoutApplies(layout, sourceOf(el)));
+      const rest = nodes.filter((el) => !laid.includes(el));
+      if (laid.length) {
+        mermaid.initialize(Object.assign({}, base, { layout }));
+        try { await mermaid.run({ nodes: laid }); } catch (_) { /* error graphic handled below */ }
+        // Some ELK algorithms can't place every graph (stress/force/mrtree fail
+        // on subgraphs) and mermaid paints its error diagram instead — inside
+        // its leftover render <div>, next to a half-drawn one: retry those on
+        // dagre rather than showing a bomb. A good render is one direct <svg>.
+        laid.forEach((el) => {
+          const svg = el.querySelector(":scope > svg");
+          if (svg && svg.getAttribute("aria-roledescription") !== "error") return;
+          el.removeAttribute("data-processed");
+          el.innerHTML = sourceOf(el);
+          rest.push(el);
+        });
+      }
+      mermaid.initialize(Object.assign({}, base, { layout: "dagre" }));
+      if (rest.length) {
+        try { await mermaid.run({ nodes: rest }); } catch (_) { /* mermaid paints its own error */ }
+      }
+    } finally {
+      window.__mwMermaidBusy--;
+    }
+  }
+  window.__mwRunMermaid = runMermaidNodes;
+
   function applyTheme(theme) {
     const resolved = THEMES.includes(theme) ? theme : "light";
     root.dataset.theme = resolved;
@@ -602,6 +676,9 @@
       copyButton.classList.add("mermaid-copy");
 
       toolbar.appendChild(toggle);
+      toolbar.appendChild(makeDiagramAction("copy-png", t("Copy image"), t("Copy diagram as a PNG image")));
+      toolbar.appendChild(makeDiagramAction("png", "PNG", t("Download diagram as PNG")));
+      toolbar.appendChild(makeDiagramAction("svg", "SVG", t("Download diagram as SVG")));
       toolbar.appendChild(copyButton);
 
       const sourcePre = document.createElement("pre");
@@ -617,6 +694,129 @@
       wrapper.appendChild(sourcePre);
     });
   }
+
+  // --- Diagram → image (copy PNG, download PNG / SVG) ---------------------
+  // A rendered diagram is an inline <svg>, not an <img>, so the browser offers
+  // no "Copy image" / "Save image as". These serialize it standalone: explicit
+  // size from the viewBox (mermaid emits width="100%"), and the block's own
+  // background painted in, so a dark-theme diagram stays legible once pasted
+  // onto a white page. Chrome rasterizes mermaid's foreignObject labels
+  // without tainting the canvas, so htmlLabels needn't be turned off.
+  const DIAGRAM_PNG_SCALE = 3;
+  const DIAGRAM_PNG_MAX_SIDE = 8192;
+
+  function makeDiagramAction(action, label, ariaLabel) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mermaid-action";
+    button.dataset.action = action;
+    button.dataset.label = label;
+    button.textContent = label;
+    button.title = ariaLabel;
+    button.setAttribute("aria-label", ariaLabel);
+    return button;
+  }
+
+  function diagramBackground(pre) {
+    for (let el = pre; el; el = el.parentElement) {
+      const bg = getComputedStyle(el).backgroundColor;
+      if (bg && bg !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(bg)) return bg;
+    }
+    return "#ffffff";
+  }
+
+  function serializeDiagram(pre) {
+    const svg = pre.querySelector(":scope > svg");
+    if (!svg) return null;
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    const rect = svg.getBoundingClientRect();
+    const width = Math.ceil(vb && vb.width ? vb.width : rect.width);
+    const height = Math.ceil(vb && vb.height ? vb.height : rect.height);
+    const background = diagramBackground(pre);
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("width", width);
+    clone.setAttribute("height", height);
+    clone.removeAttribute("style");
+    clone.style.backgroundColor = background;
+    return { xml: new XMLSerializer().serializeToString(clone), width, height, background };
+  }
+
+  async function diagramPngBlob(pre) {
+    const d = serializeDiagram(pre);
+    if (!d || !d.width || !d.height) throw new Error("no diagram");
+    const img = new Image();
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(d.xml);
+    await img.decode();
+    const scale = Math.min(DIAGRAM_PNG_SCALE, DIAGRAM_PNG_MAX_SIDE / Math.max(d.width, d.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(d.width * scale);
+    canvas.height = Math.round(d.height * scale);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = d.background;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("toBlob"))), "image/png");
+    });
+  }
+
+  function diagramFileName(pre, ext) {
+    const all = Array.from(document.querySelectorAll(".markdown-body pre.mermaid"));
+    const stem = (selectedPath.split("/").pop() || "diagram").replace(/\.[^.]+$/, "");
+    return `${stem}-diagram-${all.indexOf(pre) + 1 || 1}.${ext}`;
+  }
+
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function flashDiagramAction(button, text, ok) {
+    button.textContent = text;
+    button.classList.add(ok ? "is-copied" : "is-error");
+    setTimeout(function () {
+      button.textContent = button.dataset.label;
+      button.classList.remove("is-copied", "is-error");
+    }, ok ? 1200 : 2400);
+  }
+
+  document.addEventListener("click", async function (event) {
+    const button = event.target.closest && event.target.closest(".mermaid-action");
+    if (!button) return;
+    const block = button.closest(".mermaid-block");
+    const pre = block && block.querySelector("pre.mermaid");
+    if (!pre) return;
+    const action = button.dataset.action;
+    try {
+      if (action === "copy-png") {
+        // No async clipboard in an insecure context (http on a LAN IP).
+        if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
+          flashDiagramAction(button, t("Not allowed here — use PNG"), false);
+          return;
+        }
+        // Hand ClipboardItem the pending blob, not an awaited one, so the write
+        // still counts as part of the click (user activation).
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": diagramPngBlob(pre) })]);
+        flashDiagramAction(button, t("Copied!"), true);
+      } else if (action === "png") {
+        downloadBlob(await diagramPngBlob(pre), diagramFileName(pre, "png"));
+      } else if (action === "svg") {
+        const d = serializeDiagram(pre);
+        if (!d) throw new Error("no diagram");
+        const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + d.xml;
+        downloadBlob(new Blob([xml], { type: "image/svg+xml" }), diagramFileName(pre, "svg"));
+      }
+    } catch (err) {
+      flashDiagramAction(button, t("Failed"), false);
+    }
+  });
 
   function resetMermaidBlocksToDiagram() {
     document.querySelectorAll(".mermaid-block.is-source").forEach(function (block) {
@@ -640,8 +840,7 @@
         el.innerHTML = el.dataset.source;
       }
     });
-    mermaid.initialize(Object.assign({ startOnLoad: false }, mermaidConfigFor(mermaidThemePref())));
-    Promise.resolve(mermaid.run({ querySelector: "pre.mermaid" })).finally(setupMermaidBlocks);
+    runMermaidNodes(document.querySelectorAll("pre.mermaid")).finally(setupMermaidBlocks);
   }
 
   window.__onMermaidRendered = setupMermaidBlocks;
@@ -675,6 +874,16 @@
     mermaidThemeSelect.addEventListener("change", function () {
       const next = MERMAID_PREFS.has(mermaidThemeSelect.value) ? mermaidThemeSelect.value : "auto";
       localStorage.setItem(mermaidThemeKey, next);
+      renderMermaid();
+    });
+  }
+
+  const mermaidLayoutSelect = document.getElementById("mermaid-layout-select");
+  if (mermaidLayoutSelect) {
+    mermaidLayoutSelect.value = mermaidLayoutPref();
+    mermaidLayoutSelect.addEventListener("change", function () {
+      const next = MERMAID_LAYOUTS.has(mermaidLayoutSelect.value) ? mermaidLayoutSelect.value : "dagre";
+      localStorage.setItem(mermaidLayoutKey, next);
       renderMermaid();
     });
   }
@@ -1017,9 +1226,9 @@
           preview.querySelectorAll("input").forEach((el) => { el.disabled = true; });
           block.after(preview);
           const diagrams = preview.querySelectorAll("pre.mermaid");
-          if (diagrams.length && window.__mermaid) {
+          if (diagrams.length) {
             diagrams.forEach((el) => { el.dataset.source = el.textContent; });
-            try { window.__mermaid.run({ nodes: diagrams }); } catch (_) {}
+            runMermaidNodes(diagrams);
           }
           return true;
         } catch (err) {
@@ -2725,9 +2934,9 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         previewPane.innerHTML = data.html;
         const diagrams = previewPane.querySelectorAll("pre.mermaid");
-        if (diagrams.length && window.__mermaid) {
+        if (diagrams.length) {
           diagrams.forEach((el) => { el.dataset.source = el.textContent; el.removeAttribute("data-processed"); });
-          try { window.__mermaid.run({ nodes: diagrams }); } catch (_) {}
+          runMermaidNodes(diagrams);
         }
       } catch (err) {
         previewPane.textContent = String(err && err.message ? err.message : err);
@@ -3342,6 +3551,7 @@
       if (presetSelect.value) params.set("preset", presetSelect.value);
       params.set("include_toc", includeToc.checked ? "1" : "0");
       params.set("include_cover", includeCover.checked && !includeCover.disabled ? "1" : "0");
+      params.set("mermaid_layout", mermaidLayoutPref());
       if (format === "pdf") {
         params.set("header_left", exportHeader.left.value);
         params.set("header_center", exportHeader.center.value);

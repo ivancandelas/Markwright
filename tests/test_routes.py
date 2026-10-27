@@ -39,6 +39,11 @@ class TestIndex:
         assert b"hello.md" in r.data
         assert b"nested.md" in r.data
 
+    def test_diagram_layout_selector_and_loaders(self, client):
+        r = client.get("/")
+        assert b'id="mermaid-layout-select"' in r.data
+        assert b"@mermaid-js/layout-elk@" in r.data
+
     def test_file_param_renders_markdown(self, client):
         r = client.get("/?file=hello.md")
         assert r.status_code == 200
