@@ -852,6 +852,22 @@ _MERMAID_LAYOUT_CDNS = (
 )
 # Global diagram layouts the viewer's selector offers; "dagre" is mermaid's own.
 MERMAID_LAYOUTS = ("dagre", "elk", "elk.stress", "elk.force", "elk.mrtree", "elk.sporeOverlap", "tidy-tree")
+# Gantt formats the viewer's selector offers — mirror of MERMAID_GANTT_FORMATS
+# in static/js/app.js (minimum layout width + gantt config over mermaid's
+# defaults). The DOCX raster has no column to fit, so it lays a gantt out at
+# least _MERMAID_GANTT_DOCX_WIDTH wide: the printed size (_MERMAID_MAX_WIDTH_IN
+# at _MERMAID_SCALE) it is going to be scaled to anyway.
+_GANTT_DEFAULTS = {"displayMode": "", "barHeight": 20, "barGap": 4, "topPadding": 50,
+                   "leftPadding": 75, "fontSize": 11, "sectionFontSize": 11, "topAxis": False}
+MERMAID_GANTT_FORMATS = {
+    "standard": (800, {}),
+    "compact": (800, {"displayMode": "compact", "barHeight": 16, "barGap": 3, "fontSize": 10, "sectionFontSize": 10}),
+    "spacious": (1000, {"barHeight": 28, "barGap": 8, "topPadding": 60, "leftPadding": 110,
+                        "fontSize": 13, "sectionFontSize": 13, "topAxis": True}),
+    "wide": (1400, {}),
+    "fit": (0, {}),
+}
+_MERMAID_GANTT_DOCX_WIDTH = 900
 _MERMAID_FRONTMATTER_RE = re.compile(r"\A\s*---\r?\n.*?\r?\n---[ \t]*\r?\n", re.S)
 _ELK_KINDS = frozenset({
     "flowchart", "flowchart-elk", "graph", "stateDiagram", "stateDiagram-v2",
@@ -932,11 +948,19 @@ def _png_set_dpi(data, dpi):
     return bytes(out) if inserted else data
 
 
-def _render_mermaid_pngs(sources, layout="dagre"):
+def _mermaid_gantt_config(gantt_format):
+    """mermaid `gantt` config for the DOCX raster under a viewer gantt format."""
+    min_width, overrides = MERMAID_GANTT_FORMATS.get(gantt_format, MERMAID_GANTT_FORMATS["standard"])
+    return {**_GANTT_DEFAULTS, **overrides, "useWidth": max(min_width, _MERMAID_GANTT_DOCX_WIDTH)}
+
+
+def _render_mermaid_pngs(sources, layout="dagre", gantt_format="standard"):
     """Rasterize each mermaid diagram source to a PNG via headless Chrome
     (mermaid@11 from the same CDN the viewer uses). `layout` is the viewer's
     global layout engine, applied to the diagram types it supports; one that
-    fails on it is retried on dagre, as in the viewer.
+    fails on it is retried on dagre, as in the viewer. `gantt_format` picks the
+    gantt sizing (see MERMAID_GANTT_FORMATS); gantts keep mermaid's default
+    colors, which is what the viewer's "classic" gantt colors show.
 
     Returns a list aligned with `sources`; each entry is ``(png_bytes,
     width_px)`` or ``None`` when that diagram couldn't be rendered. Returns
@@ -958,13 +982,13 @@ def _render_mermaid_pngs(sources, layout="dagre"):
                 page = browser.new_page(device_scale_factor=_MERMAID_DEVICE_SCALE)
                 page.set_content('<div id="c" style="background:#fff;"></div>')
                 flags = page.evaluate(
-                    """async ([cdn, layoutCdns, sources, layouts, themeVars]) => {
+                    """async ([cdn, layoutCdns, sources, layouts, themeVars, gantt]) => {
                         const mermaid = (await import(cdn)).default;
                         const loaders = await Promise.all(layoutCdns.map(
                             (u) => import(u).then((m) => m.default, () => [])));
                         mermaid.registerLayoutLoaders(loaders.flat());
                         const init = (layout) => mermaid.initialize(
-                            { startOnLoad: false, theme: 'default', themeVariables: themeVars, layout });
+                            { startOnLoad: false, theme: 'default', themeVariables: themeVars, layout, gantt });
                         const c = document.getElementById('c');
                         const out = [];
                         for (let i = 0; i < sources.length; i++) {
@@ -992,7 +1016,7 @@ def _render_mermaid_pngs(sources, layout="dagre"):
                     }""",
                     [_MERMAID_CDN, list(_MERMAID_LAYOUT_CDNS), sources,
                      [layout if _mermaid_layout_applies(layout, src) else "dagre" for src in sources],
-                     _MERMAID_THEME_VARS],
+                     _MERMAID_THEME_VARS, _mermaid_gantt_config(gantt_format)],
                 )
                 for i, good in enumerate(flags):
                     if not good:
@@ -1012,9 +1036,9 @@ def _render_mermaid_pngs(sources, layout="dagre"):
     return results
 
 
-def _inline_mermaid_images(body, layout="dagre"):
+def _inline_mermaid_images(body, layout="dagre", gantt_format="standard"):
     """Replace ```mermaid fenced blocks in markdown `body` with PNG image refs,
-    pre-rendering each diagram with the global `layout` (see
+    pre-rendering each diagram with the global `layout` and `gantt_format` (see
     `_render_mermaid_pngs`). Returns
     ``(new_body, images)`` where `images` maps a generated filename → PNG bytes
     for the caller to drop on pandoc's resource-path. Diagrams that fail to
@@ -1022,7 +1046,7 @@ def _inline_mermaid_images(body, layout="dagre"):
     blocks = list(MERMAID_BLOCK_RE.finditer(body))
     if not blocks:
         return body, {}
-    rendered = _render_mermaid_pngs([m.group("code") for m in blocks], layout)
+    rendered = _render_mermaid_pngs([m.group("code") for m in blocks], layout, gantt_format)
     images = {}
     idx = [0]
 

@@ -105,6 +105,21 @@
                 <option value="tidy-tree">{{ _('Tidy tree (mindmaps)') }}</option>
               </select>
             </label>
+            <label class="settings-field">{{ _('Gantt format') }}
+              <select class="mermaid-layout-select" id="mermaid-gantt-select" aria-label="{{ _('Gantt format') }}">
+                <option value="standard">{{ _('Standard') }}</option>
+                <option value="compact">{{ _('Compact (shared rows)') }}</option>
+                <option value="spacious">{{ _('Spacious') }}</option>
+                <option value="wide">{{ _('Wide timeline') }}</option>
+                <option value="fit">{{ _('Fit column (mermaid default)') }}</option>
+              </select>
+            </label>
+            <label class="settings-field">{{ _('Gantt colors') }}
+              <select class="mermaid-layout-select" id="mermaid-gantt-colors-select" aria-label="{{ _('Gantt colors') }}">
+                <option value="theme">{{ _('Follow diagram theme') }}</option>
+                <option value="classic">{{ _('Mermaid classic') }}</option>
+              </select>
+            </label>
             <label class="settings-field">{{ _('Content width') }}
               <select class="width-select" id="width-select" aria-label="{{ _('Content width') }}">
                 <option value="narrow">{{ _('Narrow') }}</option>

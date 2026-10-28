@@ -190,6 +190,80 @@
     return layout === "tidy-tree" ? kind === "mindmap" : ELK_KINDS.test(kind);
   }
 
+  // Gantt format. Mermaid lays a gantt out at its container's width while its
+  // labels keep their font size, so a narrow column (the PDF exporter's headless
+  // page is ~470px) squeezes the timeline until bars and labels overlap. Each
+  // format lays out at least `minWidth` wide; the svg's viewBox then scales the
+  // whole chart down proportionally instead. Every format spells out mermaid's
+  // gantt defaults so switching back resets them. Mirror of
+  // MERMAID_GANTT_FORMATS in markwright/export.py (DOCX raster).
+  const GANTT_DEFAULTS = { displayMode: "", barHeight: 20, barGap: 4, topPadding: 50, leftPadding: 75, fontSize: 11, sectionFontSize: 11, topAxis: false };
+  const MERMAID_GANTT_FORMATS = {
+    standard: { minWidth: 800, gantt: {} },
+    compact: { minWidth: 800, gantt: { displayMode: "compact", barHeight: 16, barGap: 3, fontSize: 10, sectionFontSize: 10 } },
+    spacious: { minWidth: 1000, gantt: { barHeight: 28, barGap: 8, topPadding: 60, leftPadding: 110, fontSize: 13, sectionFontSize: 13, topAxis: true } },
+    wide: { minWidth: 1400, gantt: {} },
+    fit: { minWidth: 0, gantt: {} },
+  };
+  const mermaidGanttKey = "markwright-mermaid-gantt";
+  // Gantt colors: "theme" follows the diagram theme like every other diagram;
+  // "classic" draws gantts on mermaid's own default theme (the purple bars and
+  // banded sections of mermaid's docs), which the palette themes wash out.
+  const MERMAID_GANTT_COLORS = new Set(["theme", "classic"]);
+  const mermaidGanttColorsKey = "markwright-mermaid-gantt-colors";
+
+  // Same URL-first lookup as mermaidLayoutPref, for the PDF exporter.
+  function urlOrStored(param, key, valid, fallback) {
+    const value = new URLSearchParams(window.location.search).get(param) || localStorage.getItem(key) || fallback;
+    return valid(value) ? value : fallback;
+  }
+  const mermaidGanttPref = () =>
+    urlOrStored("mermaid_gantt", mermaidGanttKey, (v) => Object.hasOwn(MERMAID_GANTT_FORMATS, v), "standard");
+  const mermaidGanttColorsPref = () =>
+    urlOrStored("mermaid_gantt_colors", mermaidGanttColorsKey, (v) => MERMAID_GANTT_COLORS.has(v), "theme");
+
+  // Mermaid decides whether a task label fits inside its bar (white text) by
+  // measuring it while the svg is still unscaled. Once the viewBox scales the
+  // chart down, the browser's minimum font size can enlarge the text again, so
+  // a label judged "inside" spills past its bar — white on the white canvas.
+  // Re-check on the real on-screen size and move a spilling label outside the
+  // bar (right, or left at the chart's right edge), as mermaid itself would.
+  function fixGanttLabels(el) {
+    const svg = el.querySelector(":scope > svg[aria-roledescription=gantt]");
+    if (!svg) return;
+    const chartRight = svg.viewBox.baseVal ? svg.viewBox.baseVal.width : Infinity;
+    svg.querySelectorAll("text.taskText").forEach((label) => {
+      const bar = svg.getElementById ? svg.getElementById(label.id.replace(/-text$/, "")) : null;
+      if (!bar) return;
+      const labelW = label.getBoundingClientRect().width;
+      const barW = bar.getBoundingClientRect().width;
+      if (!labelW || labelW <= barW) return;
+      const x = bar.x.baseVal.value;
+      const w = bar.width.baseVal.value;
+      // Same unit conversion both ways: screen px → svg units for the label.
+      const labelUnits = labelW * (w / (barW || 1));
+      const right = x + w + 5 + labelUnits <= chartRight;
+      label.setAttribute("x", right ? x + w + 5 : x - 5);
+      label.setAttribute("class", label.getAttribute("class").split(/\s+/).map((c) => {
+        if (c === "taskText") return right ? "taskTextOutsideRight" : "taskTextOutsideLeft";
+        const n = /^taskText(\d+)$/.exec(c);
+        return n ? "taskTextOutside" + n[1] : c;
+      }).join(" "));
+    });
+  }
+
+  // Per-node config: useWidth is the node's own column (a ```markdown preview
+  // is narrower than the page), floored at the format's minimum. 1200 is
+  // mermaid's own fallback for a container it can't measure (hidden block).
+  function ganttConfigFor(el) {
+    const format = MERMAID_GANTT_FORMATS[mermaidGanttPref()];
+    const column = el.clientWidth || (el.parentElement ? el.parentElement.clientWidth : 0);
+    const useWidth = Math.max(column, format.minWidth) || 1200;
+    const config = { gantt: Object.assign({}, GANTT_DEFAULTS, format.gantt, { useWidth }) };
+    if (mermaidGanttColorsPref() === "classic") Object.assign(config, { theme: "default", themeVariables: {} });
+    return config;
+  }
+
   // Render `nodes` (pre.mermaid) with the current theme + layout. Shared by the
   // first render (index.html), theme/layout switches and the previews. While it
   // runs, __mwMermaidBusy holds the PDF export's readiness wait: a retried
@@ -221,9 +295,18 @@
           rest.push(el);
         });
       }
+      // Gantts render one at a time: each takes its own width (and maybe its
+      // own color theme) from ganttConfigFor.
+      const gantts = rest.filter((el) => mermaidKind(sourceOf(el)) === "gantt");
+      const others = rest.filter((el) => !gantts.includes(el));
       mermaid.initialize(Object.assign({}, base, { layout: "dagre" }));
-      if (rest.length) {
-        try { await mermaid.run({ nodes: rest }); } catch (_) { /* mermaid paints its own error */ }
+      if (others.length) {
+        try { await mermaid.run({ nodes: others }); } catch (_) { /* mermaid paints its own error */ }
+      }
+      for (const el of gantts) {
+        mermaid.initialize(Object.assign({}, base, { layout: "dagre" }, ganttConfigFor(el)));
+        try { await mermaid.run({ nodes: [el] }); } catch (_) { /* mermaid paints its own error */ }
+        fixGanttLabels(el);
       }
     } finally {
       window.__mwMermaidBusy--;
@@ -884,6 +967,26 @@
     mermaidLayoutSelect.addEventListener("change", function () {
       const next = MERMAID_LAYOUTS.has(mermaidLayoutSelect.value) ? mermaidLayoutSelect.value : "dagre";
       localStorage.setItem(mermaidLayoutKey, next);
+      renderMermaid();
+    });
+  }
+
+  const mermaidGanttSelect = document.getElementById("mermaid-gantt-select");
+  if (mermaidGanttSelect) {
+    mermaidGanttSelect.value = mermaidGanttPref();
+    mermaidGanttSelect.addEventListener("change", function () {
+      const next = Object.hasOwn(MERMAID_GANTT_FORMATS, mermaidGanttSelect.value) ? mermaidGanttSelect.value : "standard";
+      localStorage.setItem(mermaidGanttKey, next);
+      renderMermaid();
+    });
+  }
+
+  const mermaidGanttColorsSelect = document.getElementById("mermaid-gantt-colors-select");
+  if (mermaidGanttColorsSelect) {
+    mermaidGanttColorsSelect.value = mermaidGanttColorsPref();
+    mermaidGanttColorsSelect.addEventListener("change", function () {
+      const next = MERMAID_GANTT_COLORS.has(mermaidGanttColorsSelect.value) ? mermaidGanttColorsSelect.value : "theme";
+      localStorage.setItem(mermaidGanttColorsKey, next);
       renderMermaid();
     });
   }
@@ -3552,6 +3655,8 @@
       params.set("include_toc", includeToc.checked ? "1" : "0");
       params.set("include_cover", includeCover.checked && !includeCover.disabled ? "1" : "0");
       params.set("mermaid_layout", mermaidLayoutPref());
+      params.set("mermaid_gantt", mermaidGanttPref());
+      params.set("mermaid_gantt_colors", mermaidGanttColorsPref());
       if (format === "pdf") {
         params.set("header_left", exportHeader.left.value);
         params.set("header_center", exportHeader.center.value);
